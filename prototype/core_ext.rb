@@ -5,3 +5,4 @@
 require 'ram_ext'
 require 'cpu_ext'
 require 'time_ext'
+require 'array_ext'

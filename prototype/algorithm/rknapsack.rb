@@ -1,16 +1,7 @@
 # Author: Yuri Gorshenin
 
 require 'matrix'
-
-class Array
-  def shuffle
-    sort_by { rand }
-  end
-
-  def shuffle!
-    self.replace shuffle
-  end
-end
+require 'core_ext'
 
 class RandomMultipleKnapsack
   def initialize(options={})

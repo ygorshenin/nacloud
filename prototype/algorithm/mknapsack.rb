@@ -1,6 +1,7 @@
 # Author: Yuri Gorshenin
 
 require 'matrix'
+require 'core_ext'
 
 # Class represent algorithm for solving 0/1 multiple knapsack problem
 # by an evolutionart lagrangian method (read Yourim Yoon, Yong-Hyuk Kim, Byung-Ro Moon)
@@ -11,20 +12,31 @@ require 'matrix'
 # -- requirements is the two-dimensional array where each row is requirements for each item
 # -- bounds is the bounds of knapsack
 
+class Array
+  def sum
+    self.inject { |r, v| r + v }
+  end
+end
+
 class MultipleKnapsack
   def solve(values, requirements, bounds)
-    requirements.each_index do |r, i|
+    return [ 0, [] ] if values.empty?
+    return [ values.sum, Array.new(values.size, true) ] if bounds.empty?
+
+    @n, @m = values.size, bounds.size
+    
+    requirements.each_with_index do |r, i|
       r.each_index do |j|
         if r[j] > bounds[j]
           values[i] = 0
           break
         end
+        r[j] = EPS / @n if r[j] == 0
       end
     end
     
     @v, @w, @b = Matrix[values].t, Matrix[*requirements].t, Matrix[bounds].t
-    @n, @m = values.size, bounds.size
-
+    
     go
   end
 
@@ -40,6 +52,7 @@ class MultipleKnapsack
     [ mstar, xstar, bstar ]
   end
 
+  # Does x satisfies all conditions?
   def satisfy(x)
     (@b - @w * x).t.to_a.flatten.min + EPS >= 0.0
   end
@@ -59,7 +72,12 @@ class MultipleKnapsack
       vcoeff = Matrix[coeff].t
       id.delete(best)
       mstar, xstar, bstar = *lmmkp(Matrix[coeff].t)
-      return mstar if satisfy(xstar)
+      if satisfy(xstar)
+        assignment = Array.new(@n) { |i| xstar[i, 0] == 1 }
+        result = 0
+        assignment.each_with_index { |v, i| result += @v[i, 0] if v }
+        return [ result, assignment ]
+      end
     end
   end
 end
