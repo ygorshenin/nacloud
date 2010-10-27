@@ -3,7 +3,7 @@ require 'demander'
 require 'auction_server'
 
 SUPPLIERS = 15
-DEMANDERS_A, DEMANDERS_B, DEMANDERS_C = 5, 5, 10
+DEMANDERS_A, DEMANDERS_B, DEMANDERS_C = 10, 10, 20
 
 def get_percent(cur, best)
   sprintf("%.2f", cur.to_f / best * 100) + '%'

@@ -14,15 +14,14 @@ AUSM model (with queue):
 	
 	-- Each supplier may impose basic costs on one unit of each dimension, minumum costs,
 	at which he is ready to sell his good;
-	
-	-- Auction runs in several rounds (auction stops after some limit of rounds,
-	   or when there are no changes after some round);
 
-	-- There are potential allocation of goods among demanders after each round;
-	
-	-- Everybody knows all bids and potential allocations on previous rounds (queue, known to all);
+	-- Auction may run as long as it need
 
-	-- On each round every demander may offer bid (if his previous bid was rejected).
+	-- There are potential allocation of goods among demanders after each bid;
+	
+	-- Everybody knows all bids and potential allocations (queue, known to all);
+
+	-- Every demander may offer bid (if his previous bid was rejected).
 	A bid represends requirements (list of quantities of dimensions), id of supplier,
 	which part of good demander wants buy, and amount of money, which he is willing to pay.
 	More formally, bid is < d (vector of requirements), f (id of supplier), b (amount of money) >.

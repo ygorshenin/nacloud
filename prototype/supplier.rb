@@ -1,6 +1,6 @@
 # Author: Yuri Gorshenin
 
-require 'core_ext'
+require 'lib/core_ext'
 
 # Supplier class
 # Contains only quantities of available resources (in dimensions) and
@@ -13,8 +13,22 @@ require 'core_ext'
 class Supplier
   attr_reader :dimensions, :lower_costs
   
-  def initialize(dimensions, lower_costs)
+  def initialize(id, dimensions, lower_costs)
     @dimensions = dimensions
     @lower_costs = lower_costs
+    @supplier_id = id
+  end
+
+  def get_id
+    @supplier_id
+  end
+
+  def acceptible_bid? (bid)
+    if (bid[:dimensions] <=> @dimensions) < 1
+      total_cost = 0
+      bid[:dimensions].each_with_index { |d, i| total_cost += @lower_costs[i] * d }
+      return bid[:pay] >= total_cost
+    end
+    return false
   end
 end

@@ -1,6 +1,7 @@
 # Author: Yuri Gorshenin
 
-require 'core_ext'
+require 'auction_model'
+require 'lib/core_ext'
 require 'logger'
 
 # Class represents AUSMAuction
@@ -10,17 +11,17 @@ require 'logger'
 # Auctions continues until maximum number of iterations is exeeded, or
 # after some iteration nothing is changed
 #
-# run_auction method returns tuple [ total iterations, total time, info ]
+# run_auction method returns hash { :allocation, :total iterations, :auction_info }
+# where allocation is array [ { :demander, :bid } ]
 
 class AUSMAuction
-  def initialize(suppiers, demanders, options)
+  def initialize(suppliers, demanders, options={})
     # Merging default options with user-specified
 
-    @suppiers, @demanders = suppiers, demanders
+    @suppliers, @demanders = suppliers, demanders
     
     @options = {
       :max_iterations => 50,
-      :one_decision_time => 20.seconds,
     }.merge(options)
 
     @logger = Logger.new(@options[:logfile] || STDERR) # Creating logger (to file, if specified, or to STDERR)
@@ -28,35 +29,44 @@ class AUSMAuction
   end
 
   def run_auction
-    @logger.info("started auction")
+    @logger.info("auction started")
     
-    total_time, total_iterations = 0, 0
-    info = [] # Public-known queue with bids. Contains pairs <bid, status>, where status is :approved or :rejected
-    model = AUSMModel.new(suppiers) # Model for AUSM auction
+    total_iterations, info = 0, []
+    model = AUSMModel.new(@suppliers) # Model for AUSM auction
 
     @options[:max_iterations].times do
       total_iterations += 1
-      
-      @logger.info("auction iteration #{total_iterations}")
-      changed = false
-
-      demanders.each do |demander|
-        bid = demander.get_bid(info)
-        total_time += @options[:one_decision_time]
-        
-        @logger.info("user #{demander.user} bids #{bid}")
-        
-        if bid
-          result = model.try_bid(demander, bid)
-          if result
-            info.push(total_iterations, demander.user, bid, result)
-            changed = true
-          end
-        end
-      end
-      
-      break unless changed
+      process_round(model, total_iterations, info)
     end
-    [ total_iterations, total_time, info ]
+    
+    @logger.info("auction stops after #{total_iterations} iterations")
+    @logger.info("result allocation is: #{model.allocation.inspect}")
+
+    { :allocation => model.allocation,
+      :total_iterations => total_iterations,
+      :auction_info => info,
+    }
+  end
+
+  # returns false if nothing changed in this round
+  def process_round(model, iteration, info)
+    @logger.info("auction round #{iteration}")
+    
+    @demanders.each do |demander|
+      if not model.in_allocation?(demander)
+        bid = demander.get_bid(@suppliers, info)
+        status = model.try_bid(demander, bid)
+
+        @logger.info("#{demander.inspect} proposed bid #{bid.inspect}")
+        @logger.info("status: #{status}")
+        
+        info.push({ :allocation => model.allocation,
+                    :iteration => iteration,
+                    :demander => demander,
+                    :bid => bid,
+                    :status => status,
+                  })
+      end
+    end
   end
 end
