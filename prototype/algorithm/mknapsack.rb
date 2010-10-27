@@ -13,6 +13,15 @@ require 'matrix'
 
 class MultipleKnapsack
   def solve(values, requirements, bounds)
+    requirements.each_index do |r, i|
+      r.each_index do |j|
+        if r[j] > bounds[j]
+          values[i] = 0
+          break
+        end
+      end
+    end
+    
     @v, @w, @b = Matrix[values].t, Matrix[*requirements].t, Matrix[bounds].t
     @n, @m = values.size, bounds.size
 
@@ -20,17 +29,19 @@ class MultipleKnapsack
   end
 
   private
+  
+  EPS = 1e-6
 
   def lmmkp(coeff)
     limit = (@w.t * coeff)
-    xstar = Matrix[Array.new(@n) { |i| @v[i, 0] > limit[i, 0] ? 1 : 0 }].t
+    xstar = Matrix[Array.new(@n) { |i| @v[i, 0] > limit[i, 0] + EPS ? 1 : 0 }].t
     bstar = @w * xstar
     mstar = (@v.t * xstar)[0, 0]
     [ mstar, xstar, bstar ]
   end
 
   def satisfy(x)
-    (@b - @w * x).t.to_a.flatten.min >= 0.0
+    (@b - @w * x).t.to_a.flatten.min + EPS >= 0.0
   end
 
   def go
