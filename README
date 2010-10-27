@@ -1,1 +1,33 @@
 This is simple project about auctions in high-science fields.
+
+There are many types of auctions in high-science fields, but this project
+is focused on AUSM (Adaptive User Selection Mechanism) auction type,
+which is used in NASA's Jet Propulsion Laboratory.
+
+AUSM model (with queue):
+	-- There are n demanders and m suppliers;
+	
+	-- Suppliers supplies goods (one good from each supplier) with d dimensions each
+	(for instance, cluster with fixed amount of CPU, RAM, HDD and so on);
+	
+	-- Quantities of dimensions may differs from one good to another;
+	
+	-- Each supplier may impose basic costs on one unit of each dimension, minumum costs,
+	at which he is ready to sell his good;
+	
+	-- Auction runs in several rounds (auction stops after some limit of rounds,
+	   or when there are no changes after some round);
+
+	-- There are potential allocation of goods among demanders after each round;
+	
+	-- Everybody knows all bids and potential allocations on previous rounds (queue, known to all);
+
+	-- On each round every demander may offer bid (if his previous bid was rejected).
+	A bid represends requirements (list of quantities of dimensions), id of supplier,
+	which part of good demander wants buy, and amount of money, which he is willing to pay.
+	More formally, bid is < d (vector of requirements), f (id of supplier), b (amount of money) >.
+	If there are enough "free space" in good, bid is accepted.
+	Otherwise, a bid replaces a contract (or group of contracts) in potential allocation if and only if
+	b is higher than the sum of the bids, offered by those being replaced. If so, all replaced bids rejected.
+
+	In any case, this bid and new potential allocation pushed into queue.
