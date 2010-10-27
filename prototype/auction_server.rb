@@ -3,6 +3,7 @@
 require 'auction_model'
 require 'lib/core_ext'
 require 'logger'
+require 'benchmark'
 
 # Class represents AUSMAuction
 # User must create class with arrays of suppiers, demanders and options
@@ -15,6 +16,8 @@ require 'logger'
 # where allocation is array [ { :demander, :bid } ]
 
 class AUSMAuction
+  attr_reader :timing
+  
   def initialize(suppliers, demanders, options={})
     # Merging default options with user-specified
 
@@ -26,6 +29,7 @@ class AUSMAuction
 
     @logger = Logger.new(@options[:logfile] || STDERR) # Creating logger (to file, if specified, or to STDERR)
 
+    @timing = []
   end
 
   def run_auction
@@ -36,11 +40,10 @@ class AUSMAuction
 
     @options[:max_iterations].times do
       total_iterations += 1
-      process_round(model, total_iterations, info)
+      @timing.push(Benchmark.measure { process_round(model, total_iterations, info) })
     end
     
     @logger.info("auction stops after #{total_iterations} iterations")
-    @logger.info("result allocation is: #{model.allocation.inspect}")
 
     { :allocation => model.allocation,
       :total_iterations => total_iterations,
@@ -50,14 +53,14 @@ class AUSMAuction
 
   # returns false if nothing changed in this round
   def process_round(model, iteration, info)
-    @logger.info("auction round #{iteration}")
+    @logger.info("iteration #{iteration}")
     
     @demanders.each do |demander|
       if not model.in_allocation?(demander)
         bid = demander.get_bid(@suppliers, info)
         status = model.try_bid(demander, bid)
 
-        @logger.info("#{demander.inspect} proposed bid #{bid.inspect}")
+        @logger.info("#{demander.get_id} proposed bid #{bid.inspect}")
         @logger.info("status: #{status}")
         
         info.push({ :allocation => model.allocation,

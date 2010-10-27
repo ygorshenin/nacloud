@@ -8,6 +8,8 @@ class AUSMModel
   def initialize(suppliers, algo = RandomMultipleKnapsack.new)
     @suppliers, @allocation, @algo = {}, [], algo
     suppliers.each { |supplier| @suppliers[supplier.get_id] = supplier }
+
+    @timing = []
   end
 
   def in_allocation?(demander)
@@ -31,6 +33,7 @@ class AUSMModel
       result = @algo.solve(values, requirements, bounds)
 
       if result.first + bid[:pay] > was_paid
+        @allocation = @allocation.dup
         @allocation.delete_if { |pair| pair[:bid][:supplier_id] == supplier_id }
         result[1].each_with_index { |r, i| @allocation.push(was_here[i]) if r }
         @allocation.push({:demander => demander, :bid => bid })
