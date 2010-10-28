@@ -24,6 +24,7 @@ class Supplier
   end
 
   def acceptible_bid? (bid)
+    return false if bid[:pay].zero?
     if (bid[:dimensions] <=> @dimensions) < 1
       total_cost = 0
       bid[:dimensions].each_with_index { |d, i| total_cost += @lower_costs[i] * d }

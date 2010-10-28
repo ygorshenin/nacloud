@@ -6,10 +6,11 @@
 # This demander doesn't use any info about suppliers or info
 
 class DummyDemander
-  def initialize(id, dimensions, max_pay, step)
+  def initialize(id, dimensions, max_pay, step, suppliers_range)
     @id, @dimensions = id, dimensions
     
-    @max_pay, @step, @cur_pay = max_pay, step, {}
+    @max_pay, @step, @cur_pay = max_pay, step, 0
+    @range = suppliers_range
   end
 
   def get_id
@@ -18,13 +19,9 @@ class DummyDemander
 
   # get_bid called if and only if our previous bids was rejected
   def get_bid(suppliers, info)
-    cur_supplier = rand(suppliers.size)
-    if @cur_pay[cur_supplier]
-      @cur_pay[cur_supplier] += @step if @cur_pay[cur_supplier] < @max_pay
-    else
-      @cur_pay[cur_supplier] = 0
-    end
-    { :supplier_id => cur_supplier, :dimensions => @dimensions, :pay => @cur_pay[cur_supplier] }
+    result = { :supplier_id => @range, :dimensions => @dimensions, :pay => @cur_pay }
+    @cur_pay += @step if @cur_pay < @max_pay
+    result
   end
 
   def get_utility(bid)

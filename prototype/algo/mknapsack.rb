@@ -12,12 +12,6 @@ require 'lib/core_ext'
 # -- requirements is the two-dimensional array where each row is requirements for each item
 # -- bounds is the bounds of knapsack
 
-class Array
-  def sum
-    self.inject { |r, v| r + v }
-  end
-end
-
 class MultipleKnapsack
   def solve(values, requirements, bounds)
     return [ 0, [] ] if values.empty?

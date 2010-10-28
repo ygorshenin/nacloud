@@ -12,9 +12,9 @@ end
 
 def simple_test
   suppliers = Array.new(SUPPLIERS) { |i| Supplier.new(i, [10, 10], [0, 0]) }
-  demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new(i, [4, 6], 10, 1) }
-  demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new(DEMANDERS_A + i, [6, 4], 10, 1) }
-  demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new(DEMANDERS_A + DEMANDERS_B + i, [5, 5], 10, 1) }
+  demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new(i, [4, 6], 10, 1, [2 * i, 2 * i + 1]) }
+  demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new(DEMANDERS_A + i, [6, 4], 10, 1, [2 * i, 2 * i + 1]) }
+  demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new(DEMANDERS_A + DEMANDERS_B + i, [5, 5], 10, 1, [(i / 2) * 2, (i / 2) * 2 + 1]) }
 
   demanders = demanders_a + demanders_b + demanders_c
   

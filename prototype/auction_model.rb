@@ -29,16 +29,21 @@ class AUSMModel
   # Tries to allocate bid to supplier in bid[:supplier_id]
   # Verifies all basic costs limitation and dimension limitation
   def try_bid(demander, bid)
-    supplier = @suppliers[bid[:supplier_id]]
-    if supplier.acceptible_bid?(bid)
-      if can_add_without_replacement?(supplier, bid)
+    Array(bid[:supplier_id]).each do |supplier_id|
+      supplier = @suppliers[supplier_id]
+      if supplier.acceptible_bid?(bid) and can_add_without_replacement?(supplier, bid)
         add_to_allocation(supplier, demander, bid)
         return :accepted
       end
-      return try_replace(supplier, demander, bid)
+    end
+    Array(bid[:supplier_id]).each do |supplier_id|
+      supplier = @suppliers[supplier_id]
+      return :accepted if supplier.acceptible_bid?(bid) and try_replace(supplier, demander, bid) == :accepted
     end
     return :rejected
   end
+
+  private
 
   # Tries to replace some allocated bids according to auction's rules.
   # WARNING: doesn't verifies basic costs limitation on bid and bid dimensions
@@ -87,7 +92,7 @@ class AUSMModel
 
   # Deletes array of demanders (or single demander) from allocation to this supplier
   def delete_from_allocation(supplier, demanders)
-    demanders.to_a.each do |demander|
+    Array(demanders).each do |demander|
       @allocation[supplier.get_id].delete(demander.get_id)
       @in_allocation.delete(demander.get_id)
     end
