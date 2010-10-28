@@ -12,8 +12,8 @@ AUSM model (with queue):
 	
 	-- Quantities of dimensions may differs from one good to another;
 	
-	-- Each supplier may impose basic costs on one unit of each dimension, minumum costs,
-	at which he is ready to sell his good;
+	-- Each supplier may impose basic costs on one unit of each dimension (minumum costs,
+	at which he is ready to sell his good);
 
 	-- Auction may run as long as it need
 
@@ -25,7 +25,7 @@ AUSM model (with queue):
 	A bid represends requirements (list of quantities of dimensions), id of supplier,
 	which part of good demander wants buy, and amount of money, which he is willing to pay.
 	More formally, bid is < d (vector of requirements), f (id of supplier), b (amount of money) >.
-	If there are enough "free space" in good, bid is accepted.
+	If there are enough "free space" in good and all lower costs are satisfied, bid is accepted.
 	Otherwise, a bid replaces a contract (or group of contracts) in potential allocation if and only if
 	b is higher than the sum of the bids, offered by those being replaced. If so, all replaced bids rejected.
 
