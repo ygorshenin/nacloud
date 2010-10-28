@@ -26,32 +26,40 @@ class AUSMModel
     @in_allocation.has_key?(demander.get_id)
   end
 
+  # Tries to allocate bid to supplier in bid[:supplier_id]
+  # Verifies all basic costs limitation and dimension limitation
   def try_bid(demander, bid)
     supplier = @suppliers[bid[:supplier_id]]
-    
     if supplier.acceptible_bid?(bid)
       if can_add_without_replacement?(supplier, bid)
         add_to_allocation(supplier, demander, bid)
-      end
-      
-      was_here = get_allocated_to_supplier(supplier)
-      was_paid = was_here.inject(0) { |r, item| r + item[:bid][:pay] }
-      
-      d = supplier.dimensions.size
-      
-      bounds = Array.new(d) { |i| supplier.dimensions[i] - bid[:dimensions][i] }
-      requirements = was_here.collect { |item| item[:bid][:dimensions] }
-      values = was_here.collect { |item| item[:bid][:pay] }
-
-      result = @algo.solve(values, requirements, bounds)
-
-      if result.first + bid[:pay] > was_paid
-        to_delete = []
-        result[1].each_with_index { |r, i| to_delete.push(was_here[i][:demander]) unless r }
-        delete_from_allocation(supplier, to_delete)
-        add_to_allocation(supplier, demander, bid)
         return :accepted
       end
+      return try_replace(supplier, demander, bid)
+    end
+    return :rejected
+  end
+
+  # Tries to replace some allocated bids according to auction's rules.
+  # WARNING: doesn't verifies basic costs limitation on bid and bid dimensions
+  def try_replace(supplier, demander, bid)
+    was_here = get_allocated_to_supplier(supplier)
+    was_paid = was_here.inject(0) { |r, item| r + item[:bid][:pay] }
+    
+    d = supplier.dimensions.size
+    
+    bounds = Array.new(d) { |i| supplier.dimensions[i] - bid[:dimensions][i] }
+    requirements = was_here.collect { |item| item[:bid][:dimensions] }
+    values = was_here.collect { |item| item[:bid][:pay] }
+
+    result = @algo.solve(values, requirements, bounds)
+
+    if result.first + bid[:pay] > was_paid
+      to_delete = []
+      result[1].each_with_index { |r, i| to_delete.push(was_here[i][:demander]) unless r }
+      delete_from_allocation(supplier, to_delete)
+      add_to_allocation(supplier, demander, bid)
+      return :accepted
     end
     return :rejected
   end
@@ -59,7 +67,7 @@ class AUSMModel
   private
 
   # Verifies if there are enough space in suppliers's good to add that bid without replacement.
-  # Doesn't verifies basic costs limitation!
+  # WARNING: doesn't verifies basic costs limitation
   def can_add_without_replacement?(supplier, bid)
     return false unless supplier.acceptible_bid?(bid)
     
