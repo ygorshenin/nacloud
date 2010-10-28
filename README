@@ -15,7 +15,7 @@ AUSM model (with queue):
 	-- Each supplier may impose basic costs on one unit of each dimension (minumum costs,
 	at which he is ready to sell his good);
 
-	-- Auction may run as long as it need
+	-- Auction may run as long as it need;
 
 	-- There are potential allocation of goods among demanders after each bid;
 	
@@ -29,4 +29,28 @@ AUSM model (with queue):
 	Otherwise, a bid replaces a contract (or group of contracts) in potential allocation if and only if
 	b is higher than the sum of the bids, offered by those being replaced. If so, all replaced bids rejected.
 
-	In any case, this bid and new potential allocation pushed into queue.
+	In any case, this bid and new potential allocation pushed into queue;
+
+AUSM model (with rounds):
+        -- There are n demanders and m suppliers;
+
+	-- Suppliers supplies goods (one good from each supplier) with d dimensions each
+	(for instance, cluster with fixed amount of CPU, RAM, HDD and so on);
+	
+	-- Quantities of dimensions may differs from one good to another;
+	
+	-- Each supplier may impose basic costs on one unit of each dimension (minumum costs,
+	at which he is ready to sell his good);
+	
+	-- Auction runs in serveral rounds;
+
+	-- Auction stops after round in which no changes in allocation was (or after maximum number of rounds exceeded);
+	Of course, there may be some minimum number of rounds, which helps demanders adjust their bids;
+
+	-- On each round demander may offer bid (in any case, was or not his previous bids accepted or rejected);
+	Bid may contain list of preffered suppliers (if not, whole list of suppliers used as preffered);
+
+	-- Everybody knows all bids and potential allocations from previous rounds.
+	So, some bids may be rejected, others are accepted;
+
+	-- After each round auction model computes optimal allocation;
