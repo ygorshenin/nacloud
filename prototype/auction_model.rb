@@ -6,37 +6,65 @@ class AUSMModel
   attr_reader :allocation
   
   def initialize(suppliers, algo = RandomMultipleKnapsack.new)
-    @suppliers, @allocation, @algo = {}, [], algo
-    suppliers.each { |supplier| @suppliers[supplier.get_id] = supplier }
+    
+    # @suppliers maps {:supplier_id => supplier}
+    # @allocation maps {:supplier_id => {:demander_id => {:demander => demander, :bid => bid}}} --- all demanders in possible allocation to this supplier
+    # @algo is a realization of knapsack algorithm
+    
+    @suppliers, @allocation, @algo = {}, {}, algo
+    suppliers.each do |supplier|
+      @suppliers[supplier.get_id] = supplier
+      @allocation[supplier.get_id] = {}
+    end
 
-    @timing = []
+    # in_allocation maps {:demander_id => true}
+    @in_allocation = {}
   end
 
+  # Vefifies is that demander in last potential allocation
   def in_allocation?(demander)
-    @allocation.find { |pair| pair[:demander] == demander }
+    @in_allocation.has_key?(demander.get_id)
+  end
+
+  # Gets all bids, allocated to that supplier
+  def get_allocated_to_supplier(supplier)
+    @allocation[supplier.get_id].values
+  end
+
+  # Deletes array of demanders (or single demander) from allocation to this supplier
+  def delete_from_allocation(supplier, demanders)
+    demanders.to_a.each do |demander|
+      @allocation[supplier.get_id].delete(demander.get_id)
+      @in_allocation.delete(demander.get_id)
+    end
+  end
+
+  # Adds one demander to potential allocation to this supplier
+  def add_to_allocation(supplier, demander, bid)
+    @allocation[supplier.get_id][demander.get_id] = { :demander => demander, :bid => bid }
+    @in_allocation[demander.get_id] = true
   end
 
   def try_bid(demander, bid)
-    supplier_id = bid[:supplier_id]
-    supplier = @suppliers[supplier_id]
+    supplier = @suppliers[bid[:supplier_id]]
     
     if supplier.acceptible_bid?(bid)
-      was_here = @allocation.find_all { |pair| pair[:bid][:supplier_id] == supplier_id }
-      was_paid = was_here.inject(0) { |r, pair| r + pair[:bid][:pay] }
+      was_here = get_allocated_to_supplier(supplier)
+      was_paid = was_here.inject(0) { |r, item| r + item[:bid][:pay] }
       
       d = supplier.dimensions.size
       
       bounds = Array.new(d) { |i| supplier.dimensions[i] - bid[:dimensions][i] }
-      requirements = was_here.collect { |pair| pair[:bid][:dimensions] }
-      values = was_here.collect { |pair| pair[:bid][:pay] }
+      requirements = was_here.collect { |item| item[:bid][:dimensions] }
+      values = was_here.collect { |item| item[:bid][:pay] }
 
       result = @algo.solve(values, requirements, bounds)
 
       if result.first + bid[:pay] > was_paid
-        @allocation = @allocation.dup
-        @allocation.delete_if { |pair| pair[:bid][:supplier_id] == supplier_id }
-        result[1].each_with_index { |r, i| @allocation.push(was_here[i]) if r }
-        @allocation.push({:demander => demander, :bid => bid })
+        to_delete = []
+        result[1].each_with_index { |r, i| to_delete.push(was_here[i][:demander]) unless r }
+        delete_from_allocation(supplier, to_delete)
+        add_to_allocation(supplier, demander, bid)
         return :accepted
       end
     end

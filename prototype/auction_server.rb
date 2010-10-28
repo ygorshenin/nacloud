@@ -3,7 +3,6 @@
 require 'auction_model'
 require 'lib/core_ext'
 require 'logger'
-require 'benchmark'
 
 # Class represents AUSMAuction
 # User must create class with arrays of suppiers, demanders and options
@@ -16,8 +15,6 @@ require 'benchmark'
 # where allocation is array [ { :demander, :bid } ]
 
 class AUSMAuction
-  attr_reader :timing
-  
   def initialize(suppliers, demanders, options={})
     # Merging default options with user-specified
 
@@ -28,8 +25,6 @@ class AUSMAuction
     }.merge(options)
 
     @logger = Logger.new(@options[:logfile] || STDERR) # Creating logger (to file, if specified, or to STDERR)
-
-    @timing = []
   end
 
   def run_auction
@@ -40,7 +35,7 @@ class AUSMAuction
 
     @options[:max_iterations].times do
       total_iterations += 1
-      @timing.push(Benchmark.measure { process_round(model, total_iterations, info) })
+      process_round(model, total_iterations, info)
     end
     
     @logger.info("auction stops after #{total_iterations} iterations")
@@ -63,7 +58,7 @@ class AUSMAuction
         @logger.info("#{demander.get_id} proposed bid #{bid.inspect}")
         @logger.info("status: #{status}")
         
-        info.push({ :allocation => model.allocation,
+        info.push({ :allocation => model.allocation.dup,
                     :iteration => iteration,
                     :demander => demander,
                     :bid => bid,
