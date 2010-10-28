@@ -26,29 +26,14 @@ class AUSMModel
     @in_allocation.has_key?(demander.get_id)
   end
 
-  # Gets all bids, allocated to that supplier
-  def get_allocated_to_supplier(supplier)
-    @allocation[supplier.get_id].values
-  end
-
-  # Deletes array of demanders (or single demander) from allocation to this supplier
-  def delete_from_allocation(supplier, demanders)
-    demanders.to_a.each do |demander|
-      @allocation[supplier.get_id].delete(demander.get_id)
-      @in_allocation.delete(demander.get_id)
-    end
-  end
-
-  # Adds one demander to potential allocation to this supplier
-  def add_to_allocation(supplier, demander, bid)
-    @allocation[supplier.get_id][demander.get_id] = { :demander => demander, :bid => bid }
-    @in_allocation[demander.get_id] = true
-  end
-
   def try_bid(demander, bid)
     supplier = @suppliers[bid[:supplier_id]]
     
     if supplier.acceptible_bid?(bid)
+      if can_add_without_replacement?(supplier, bid)
+        add_to_allocation(supplier, demander, bid)
+      end
+      
       was_here = get_allocated_to_supplier(supplier)
       was_paid = was_here.inject(0) { |r, item| r + item[:bid][:pay] }
       
@@ -69,5 +54,40 @@ class AUSMModel
       end
     end
     return :rejected
+  end
+
+  private
+
+  # Verifies if there are enough space in suppliers's good to add that bid without replacement.
+  # Doesn't verifies basic costs limitation!
+  def can_add_without_replacement?(supplier, bid)
+    return false unless supplier.acceptible_bid?(bid)
+    
+    requirements = get_allocated_to_supplier(supplier).collect { |item| item[:bid][:dimensions] }.push(bid[:dimensions]) # gets two-dimensional array of bid's requirements
+    used_space = [0] * supplier.dimensions.size # creates array, represends used space for each dimension
+    used_space = used_space.zip(*requirements).map { |v| v.sum } # calculate used space according to allocated bids
+    used_space.each_index do |i|
+      return false if used_space[i] > supplier.dimensions[i]
+    end
+    return true
+  end
+
+  # Gets all bids, allocated to that supplier
+  def get_allocated_to_supplier(supplier)
+    @allocation[supplier.get_id].values
+  end
+
+  # Deletes array of demanders (or single demander) from allocation to this supplier
+  def delete_from_allocation(supplier, demanders)
+    demanders.to_a.each do |demander|
+      @allocation[supplier.get_id].delete(demander.get_id)
+      @in_allocation.delete(demander.get_id)
+    end
+  end
+
+  # Adds one demander to potential allocation to this supplier
+  def add_to_allocation(supplier, demander, bid)
+    @allocation[supplier.get_id][demander.get_id] = { :demander => demander, :bid => bid }
+    @in_allocation[demander.get_id] = true
   end
 end
