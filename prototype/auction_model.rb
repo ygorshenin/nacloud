@@ -98,7 +98,7 @@ class AUSMModel
     end
   end
 
-  # Adds one demander to potential allocation to this supplier
+  # Adds one demander to potential allocation of this supplier
   def add_to_allocation(supplier, demander, bid)
     @allocation[supplier.get_id][demander.get_id] = { :demander => demander, :bid => bid }
     @in_allocation[demander.get_id] = true
