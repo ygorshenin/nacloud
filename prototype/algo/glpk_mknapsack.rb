@@ -89,6 +89,3 @@ END_OF_DATA
     return [ result, assignment ]
   end
 end
-
-result = GLPKMultipleKnapsack.new.solve([6, 7, 12], [[4, 6], [6, 4], [5, 5]], [10, 10])
-puts result.inspect
