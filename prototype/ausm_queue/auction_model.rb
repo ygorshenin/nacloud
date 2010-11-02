@@ -5,7 +5,7 @@ require 'algo/rknapsack'
 class AUSMModel
   attr_reader :allocation
   
-  def initialize(suppliers, algo = MultipleKnapsack.new)
+  def initialize(suppliers, algo=MultipleKnapsack.new)
     
     # @suppliers maps {:supplier_id => supplier}
     # @allocation maps {:supplier_id => {:demander_id => {:demander => demander, :bid => bid}}} --- all demanders in possible allocation to this supplier
