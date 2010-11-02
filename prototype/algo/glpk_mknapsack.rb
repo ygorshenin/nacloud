@@ -23,9 +23,9 @@ class GLPKMultipleKnapsack
     dump_data(values, requirements, bounds) if @options[:dump_data]
     `#{@options[:glpsol]} --model #{@options[:model_file]} --data #{@options[:data_file]}`
     result = get_result
-#    File.delete(@options[:output_file])
-#    File.delete(@options[:model_file]) if @options[:dump_model]
-#    File.delete(@options[:data_file]) if @options[:dump_data]
+    File.delete(@options[:output_file])
+    File.delete(@options[:model_file]) if @options[:dump_model]
+    File.delete(@options[:data_file]) if @options[:dump_data]
     result
   end
 
@@ -53,17 +53,16 @@ END_OF_MODEL
   end
 
   def dump_data(values, requirements, bounds)
-    n, m = values.size, bounds.size
-    items, dimensions = (0 ... n).to_a, (0 ... m).to_a
-    weights = items.zip(requirements).map { |array| array.join(' ') }.join("\n")
-    weights = dimensions.join(' ') + " :=\n" + weights
+    items, dimensions = [values, bounds].map { |v| (0 ... v.size).to_a }
+    weights = dimensions.join(' ') + ":=\n" +
+      items.zip(requirements).map { |v| v.join(' ') }.join("\n")
 
     data = <<END_OF_DATA
 set #{@options[:items]}:=#{items.join(' ')};
 set #{@options[:dimensions]}:=#{dimensions.join(' ')};
 param #{@options[:weights]}:\n#{weights};
-param #{@options[:costs]} := #{items.zip(values).map { |v| v.join(' ') }.join(',')};
-param #{@options[:bounds]} := #{dimensions.zip(bounds).map { |v| v.join(' ') }.join(',')};
+param #{@options[:costs]}:=#{items.zip(values).map { |v| v.join(' ') }.join(',')};
+param #{@options[:bounds]}:=#{dimensions.zip(bounds).map { |v| v.join(' ') }.join(',')};
 end;
 END_OF_DATA
     File.open(@options[:data_file], 'w') do |file|
