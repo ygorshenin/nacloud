@@ -1,5 +1,7 @@
 # Author: Yuri Gorshenin
 
+require 'lib/core_ext'
+
 # Algorithm solves Multidimensional Multiple Knapsack problem with GLPK.
 # Algorithm generates two files for model and data, then calls glpsol utility.
 # After that, script parses output file and retrieves allocation
@@ -62,6 +64,8 @@ class GLPKMDMK
   end
 
   def solve(values, requirements, bounds)
+    return [0, []] if values.empty? or bounds.empty?
+    return [values.sum, [0] * values.size] if bounds.first.empty?
     dump_model if @options[:dump_model]
     dump_data(values, requirements, bounds) if @options[:dump_data]
     `#{@options[:glpsol]} --model #{@options[:model_file]} --data #{@options[:data_file]}`
