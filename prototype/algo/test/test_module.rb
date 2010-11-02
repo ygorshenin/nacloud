@@ -1,7 +1,7 @@
 require 'lib/core_ext'
 
 module SimpleKnapsackTests
-  
+  EPS = 1e-6
   MAX_VALUE = 10000
   MAX_BOUND = 10000
   
@@ -79,6 +79,15 @@ module SimpleKnapsackTests
     consistent(values, requirements, bounds, result)
     must_be(result.first, 200, "test_large")
   end
+
+  def test_float_small
+    values = [6.3, 7.1, 12.0]
+    requirements = [[4, 6], [6, 4], [5, 5]]
+    bounds = [10, 10]
+    result = @algo.solve(values, requirements, bounds)
+    consistent(values, requirements, bounds, result)
+    must_be(result.first, 13.4, "test_float_small")
+  end
   
   def consistent(values, requirements, bounds, result)
     value, assignment = result
@@ -90,7 +99,7 @@ module SimpleKnapsackTests
         requirements[index].each_with_index { |r, i| used[i] += r }
       end
     end
-    assert_equal(value, 0)
+    assert_in_delta(0, value, EPS)
     used.each_with_index { |r, i| assert(r <= bounds[i]) }
   end
 

@@ -23,9 +23,9 @@ class GLPKMultipleKnapsack
     dump_data(values, requirements, bounds) if @options[:dump_data]
     `#{@options[:glpsol]} --model #{@options[:model_file]} --data #{@options[:data_file]}`
     result = get_result
-    File.delete(@options[:output_file])
-    File.delete(@options[:model_file]) if @options[:dump_model]
-    File.delete(@options[:data_file]) if @options[:dump_data]
+#    File.delete(@options[:output_file])
+#    File.delete(@options[:model_file]) if @options[:dump_model]
+#    File.delete(@options[:data_file]) if @options[:dump_data]
     result
   end
 
@@ -43,8 +43,8 @@ maximize #{@options[:result]} : sum { i in #{@options[:items]} } x[i] * #{@optio
 s.t. #{@options[:knapsack_subject]} { j in #{@options[:dimensions]} }:
      sum { i in #{@options[:items]} } x[i] * #{@options[:weights]}[i, j] <= #{@options[:bounds]}[j];
 solve;
-printf "#{@options[:result]} : %d\\n", #{@options[:result]} > "#{@options[:output_file]}";
-printf { i in #{@options[:items]} }: "#{@options[:variable_name]}[%s] : %d\\n", i, #{@options[:variable_name]}[i] >> "#{@options[:output_file]}";
+printf "#{@options[:result]}:%f\\n", #{@options[:result]} > "#{@options[:output_file]}";
+printf { i in #{@options[:items]} }: "#{@options[:variable_name]}[%s]:%d\\n", i, #{@options[:variable_name]}[i] >> "#{@options[:output_file]}";
 end;
 END_OF_MODEL
     File.open(@options[:model_file], 'w') do |file|
@@ -72,15 +72,15 @@ END_OF_DATA
   end
 
   def get_result
-    result_regex = /#{@options[:result]}\s+:\s+(\d+)/
-    variable_regex = /#{@options[:variable_name]}\[(\d+)\]\s+:\s+(\d+)/
+    result_regex = /#{@options[:result]}:(.+)/
+    variable_regex = /#{@options[:variable_name]}\[(\d+)\]:(.+)/
     result, assignment = 0, []
     
     File.open(@options[:output_file], 'r') do |file|
       file.each do |line|
         line.strip!
         if line =~ result_regex
-          result = $1.to_i
+          result = $1.to_f
         elsif line =~ variable_regex
           assignment[$1.to_i] = $2.to_i == 1
         end
