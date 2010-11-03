@@ -1,7 +1,9 @@
+# Author: Yuri Gorshenin
+
 require 'auctions/ausm_queue/auction_server'
-require 'demander'
+require 'auctions/base/demander'
+require 'auctions/base/supplier'
 require 'lib/core_ext'
-require 'supplier'
 
 SUPPLIERS = 10
 DEMANDERS_A, DEMANDERS_B, DEMANDERS_C = 5, 5, 10
