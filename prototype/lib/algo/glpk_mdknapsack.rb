@@ -1,4 +1,6 @@
-class GLPKMultipleKnapsack
+# Author: Yuri Gorshenin
+
+class GLPKMDKnapsack
   def initialize(options={})
     @options = {
       :items => 'Items',

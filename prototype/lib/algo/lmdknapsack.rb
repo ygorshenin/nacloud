@@ -1,9 +1,9 @@
 # Author: Yuri Gorshenin
 
+require 'lib/ext/core_ext'
 require 'matrix'
-require 'lib/core_ext'
 
-# Class represent algorithm for solving 0/1 multiple knapsack problem
+# Class represent algorithm for solving 0/1 multidimensional one-knapsack problem
 # by an evolutionart lagrangian method (read Yourim Yoon, Yong-Hyuk Kim, Byung-Ro Moon)
 # 
 # One may solve one instance of problem by calling solve method
@@ -12,7 +12,7 @@ require 'lib/core_ext'
 # -- requirements is the two-dimensional array where each row is requirements for each item
 # -- bounds is the bounds of knapsack
 
-class MultipleKnapsack
+class LagrangianMDKnapsack
   def solve(values, requirements, bounds)
     return [ 0, [] ] if values.empty?
     return [ values.sum, Array.new(values.size, true) ] if bounds.empty?

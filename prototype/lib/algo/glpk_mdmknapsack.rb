@@ -1,7 +1,5 @@
 # Author: Yuri Gorshenin
 
-require 'lib/core_ext'
-
 # Algorithm solves Multidimensional Multiple Knapsack problem with GLPK.
 # Algorithm generates two files for model and data, then calls glpsol utility.
 # After that, script parses output file and retrieves allocation
@@ -41,7 +39,7 @@ require 'lib/core_ext'
 # Bag   	     10		10;
 # end;
 
-class GLPKMDMK
+class GLPKMDMultipleKnapsack
   def initialize(options={})
     @options = {
       :items => 'Items',
@@ -136,7 +134,7 @@ END_OF_MODEL
     preferences = ''
     if pref
       preferences = "param #{@options[:preferences]}:\n" +
-        knapsacks.join(' ') + ":=\n" +items.zip(pref).map { |v| v.join(' ') }.join("\n") + ';'
+        knapsacks.join(' ') + ":=\n" + items.zip(pref).map { |v| v.join(' ') }.join("\n") + ';'
     end
     
     data = <<END_OF_DATA

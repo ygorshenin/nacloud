@@ -1,8 +1,7 @@
 # Author: Yuri Gorshenin
 
 require 'auctions/ausm_queue/auction_model'
-require 'lib/algo/glpk_mknapsack'
-require 'lib/core_ext'
+require 'lib/algo/glpk_mdknapsack'
 require 'logger'
 
 # Class represents AUSMAuction
@@ -35,7 +34,7 @@ class AUSMServerQueue
     total_iterations, info = 0, []
     
     # Model for AUSM auction with queue
-    model = AUSMModelQueue.new(@suppliers, @options[:algo] || GLPKMultipleKnapsack.new)
+    model = AUSMModelQueue.new(@suppliers, @options[:algo] || GLPKMDKnapsack.new)
 
     @options[:max_iterations].times do
       total_iterations += 1

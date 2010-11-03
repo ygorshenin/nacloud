@@ -1,9 +1,12 @@
 # Author: Yuri Gorshenin
 
+require 'lib/ext/core_ext'
 require 'matrix'
-require 'lib/core_ext'
 
-class RandomMultipleKnapsack
+# Random Multidimentional One-Knapsack algorithm.
+# Stops after fixed number of iterations.
+# On each iteration tries random permutation of items.
+class RandomMDKnapsack
   def initialize(options={})
     @options = {
       :max_iterations => 10000

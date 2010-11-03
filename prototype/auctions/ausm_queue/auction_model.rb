@@ -1,7 +1,7 @@
 # Author: Yuri Gorshenin
 
 require 'auctions/base/ausm_model.rb'
-require 'lib/core_ext'
+require 'lib/ext/core_ext'
 
 class AUSMModelQueue
   include AUSMModel

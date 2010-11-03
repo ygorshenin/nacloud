@@ -1,7 +1,5 @@
 # Author: Yuri Gorshenin
 
-require 'lib/core_ext'
-
 # Supplier class
 # Contains only quantities of available resources (in dimensions) and
 # lower costs (minimum cost for each resource type) in some currency

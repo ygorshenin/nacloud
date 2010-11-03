@@ -1,5 +1,8 @@
-require 'lib/core_ext'
+# Author: Yuri Gorshenin
 
+require 'lib/ext/core_ext'
+
+# Module contains simple tests for multidimensional one-knapsack algorithms
 module SimpleKnapsackTests
   DELTA = 1e-6
   MAX_VALUE = 10000
@@ -71,7 +74,7 @@ module SimpleKnapsackTests
     bounds = Array.new(m, n / 2)
     result = @algo.solve(values, requirements, bounds)
     consistent?(values, requirements, bounds, result)
-    must_be(result.first, 200, "test large")
+    must_be(result.first, 100, "test large")
   end
 
   def test_float_small
@@ -102,7 +105,7 @@ module SimpleKnapsackTests
     assert_equal(expected.last, result.last)
   end
 
-  def must_be(result, correct, msg="")
+  def must_be(result, correct, msg='')
     percent = result.to_f / correct * 100
     STDERR.printf("%s: ", msg) if not msg.empty?
     STDERR.printf("%.2f percent from optimal", percent)

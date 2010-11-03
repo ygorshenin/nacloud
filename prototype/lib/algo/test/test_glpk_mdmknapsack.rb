@@ -1,13 +1,16 @@
+#!/usr/bin/ruby
+
 # Author: Yuri Gorshenin
 
-require 'algo/glpk_mdmknapsack.rb'
+require 'lib/algo/glpk_mdmknapsack.rb'
+require 'lib/ext/core_ext'
 require 'test/unit'
 
-class TestGLPKMDMK < Test::Unit::TestCase
+class TestGLPKMDMultipleKnapsack < Test::Unit::TestCase
   DELTA = 1e-6
   
   def setup
-    @algo = GLPKMDMK.new
+    @algo = GLPKMDMultipleKnapsack.new
   end
 
   def test_empty

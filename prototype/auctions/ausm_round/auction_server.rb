@@ -2,7 +2,6 @@
 
 require 'auctions/ausm_round/auction_model'
 require 'lib/algo/glpk_mdmknapsack'
-require 'lib/core_ext'
 require 'logger'
 
 # Class represents AUSMAuction with Rounds
@@ -30,7 +29,7 @@ class AUSMServerRound
     @logger.info("auction started")
 
     info = []
-    model = AUSMModelRound.new(@suppiers, GLPKMDMK.new) # Model for AUSM auction
+    model = AUSMModelRound.new(@suppiers, GLPKMDMultipleKnapsack.new) # Model for AUSM auction
 
     (1 .. @options[:max_iterations]).each do |iteration|
       process_round(model, iteration, info)
