@@ -1,6 +1,7 @@
 # Author: Yuri Gorshenin
 
-require 'auction_model'
+require 'auctions/ausm_round/auction_model'
+require 'lib/algo/glpk_mdmknapsack'
 require 'lib/core_ext'
 require 'logger'
 
@@ -29,7 +30,7 @@ class AUSMServerRound
     @logger.info("auction started")
 
     info = []
-    model = AUSMModelRound.new(@suppiers) # Model for AUSM auction
+    model = AUSMModelRound.new(@suppiers, GLPKMDMK.new) # Model for AUSM auction
 
     (1 .. @options[:max_iterations]).each do |iteration|
       process_round(model, iteration, info)
@@ -60,6 +61,6 @@ class AUSMServerRound
     info.push({ :allocation => model.allocation.dup,
                 :iteration => iteration,
               })
-    @logger.info("after #{iteration} there is the next allocation: #{model.allocation}")
+    @logger.info("Accepted: #{model.allocation.values.collect { |v| v.keys }.flatten.sort.join(',')}")
   end
 end
