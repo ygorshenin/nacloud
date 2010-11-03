@@ -22,7 +22,7 @@ def simple_test
   
   demanders = demanders_a + demanders_b + demanders_c
   
-  auction = AUSMAuction.new(suppliers, demanders, :max_iterations => 100)
+  auction = AUSMServerQueue.new(suppliers, demanders, :max_iterations => 100)
   allocation = auction.run_auction[:allocation]
 
   puts "final allocation:"

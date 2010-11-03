@@ -3,6 +3,7 @@
 require 'ausm_queue/auction_model'
 require 'lib/core_ext'
 require 'logger'
+require 'algo/glpk_mknapsack'
 
 # Class represents AUSMAuction
 # User must create class with arrays of suppiers, demanders and options
@@ -12,10 +13,10 @@ require 'logger'
 # after some iteration nothing is changed
 #
 # run_auction method returns hash { :allocation, :total iterations, :auction_info }
-# where allocation is array [ { :demander, :bid } ]
+# where allocation is array [{ :demander, :bid }]
 
-class AUSMAuction
-  def initialize(suppliers, demanders, options={})
+class AUSMServerQueue
+  def initialize(suppliers, demanders, options = {})
     # Merging default options with user-specified
 
     @suppliers, @demanders = suppliers, demanders
@@ -24,14 +25,17 @@ class AUSMAuction
       :max_iterations => 50,
     }.merge(options)
 
-    @logger = Logger.new(@options[:logfile] || STDERR) # Creating logger (to file, if specified, or to STDERR)
+    # Creating logger (to file, if specified, or to STDERR)
+    @logger = Logger.new(@options[:logfile] || STDERR)
   end
 
   def run_auction
     @logger.info("auction started")
     
     total_iterations, info = 0, []
-    model = AUSMModel.new(@suppliers) # Model for AUSM auction
+    
+    # Model for AUSM auction with queue
+    model = AUSMModelQueue.new(@suppliers, @options[:algo] || GLPKMultipleKnapsack.new)
 
     @options[:max_iterations].times do
       total_iterations += 1

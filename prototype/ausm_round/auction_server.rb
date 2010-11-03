@@ -13,15 +13,16 @@ require 'logger'
 # run_auction method returns hash { :allocation, :total iterations, :auction_info }
 # where allocation is array [ { :demander, :bid } ]
 
-class AUSMAuctionRound
+class AUSMServerRound
   def initialize(suppiers, demanders, options={})
     # Merging default options with user-specified    
     @suppiers, @demanders = suppiers, demanders
     @options = {
       :max_iterations => 50,
     }.merge(options)
-
-    @logger = Logger.new(@options[:logfile] || STDERR) # Creating logger (to file, if specified, or to STDERR)
+    
+    # Creating logger (to file, if specified, or to STDERR)
+    @logger = Logger.new(@options[:logfile] || STDERR) 
   end
 
   def run_auction
@@ -56,5 +57,6 @@ class AUSMAuctionRound
     info.push({ :allocation => model.allocation.dup,
                 :iteration => iteration,
               })
+    @logger.info("after #{iteration} there is the next allocation: #{model.allocation}")
   end
 end
