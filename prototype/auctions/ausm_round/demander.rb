@@ -5,9 +5,10 @@
 # Otherwise, raise pay.
 
 class DummyDemander
-  def initialize(id, dimensions, max_pay, step)
+  def initialize(id, dimensions, max_pay, step, suppliers_range = nil)
     @id, @dimensions = id, dimensions
     @max_pay, @step, @cur_pay = max_pay, step, 0
+    @range = suppliers_range
   end
 
   def get_id
@@ -17,6 +18,7 @@ class DummyDemander
   def get_bid(suppliers, info)
     return @last_bid if was_accepted(info.last)
     @last_bid = {
+      :supplier_id => @range,
       :dimensions => @dimensions,
       :pay => @cur_pay,
     }
