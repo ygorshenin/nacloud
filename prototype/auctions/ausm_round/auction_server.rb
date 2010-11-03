@@ -51,7 +51,10 @@ class AUSMServerRound
     @demanders.each do |demander|
       bid = demander.get_bid(@suppliers, info)
       @logger.info("#{demander.get_id} proposed bid #{bid.inspect}")
-      bids.push([demander, bid])
+      bids.push({
+                  :demander => demander,
+                  :bid => bid,
+                })
     end
     model.allocate_bids(bids)
     info.push({ :allocation => model.allocation.dup,

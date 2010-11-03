@@ -1,11 +1,16 @@
+# Author: Yuri Gorshenin
+
+# Model contains most common actions in different AUSM auctions
 module AUSMModel
   attr_reader :allocation
 
   def initialize(suppliers, algo)
-    # @suppliers maps {:supplier_id => supplier} @allocation maps
-    # {:supplier_id => {:demander_id => {:demander => demander, :bid
-    # => bid}}} --- all demanders in possible allocation to this
-    # supplier @algo is a realization of knapsack algorithm
+    # @suppliers maps {:supplier_id => supplier}.
+    #
+    # @allocation maps {:supplier_id => {:demander_id => {:demander => demander, :bid  => bid}}} ---
+    # all demanders in possible allocation to this supplier.
+    #
+    # @algo is a realization of knapsack algorithm.
     
     @suppliers, @allocation, @algo = {}, {}, algo
     suppliers.each do |supplier|

@@ -1,9 +1,10 @@
 # Author: Yuri Gorhshenin
 
-# Class represents dummy demander behavior.
-# For each bid request, randomly selects supplier and try to increase last pay, until budget is exhausted
-# If all suppliers are processed, tries to bid to random supplier with max_pay
-# This demander doesn't use any info about suppliers or info
+# Class represents dummy demander behavior.  For each bid request,
+# randomly selects supplier and try to increase last pay, until budget
+# is exhausted. If all suppliers are processed, tries to bid to random
+# supplier with max_pay. This demander doesn't use any info about
+# suppliers or info
 
 class DummyDemander
   def initialize(id, dimensions, max_pay, step, suppliers_range)
