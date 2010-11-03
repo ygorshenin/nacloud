@@ -3,7 +3,7 @@
 # Author: Yuri Gorshenin
 
 require 'auctions/ausm_queue/auction_server'
-require 'auctions/base/demander'
+require 'auctions/ausm_queue/demander'
 require 'auctions/base/supplier'
 require 'lib/core_ext'
 
