@@ -1,7 +1,7 @@
-require 'supplier'
+require 'auctions/ausm_queue/auction_server'
 require 'demander'
-require 'ausm_queue/auction_server'
 require 'lib/core_ext'
+require 'supplier'
 
 SUPPLIERS = 10
 DEMANDERS_A, DEMANDERS_B, DEMANDERS_C = 5, 5, 10

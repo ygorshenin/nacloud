@@ -1,7 +1,7 @@
+# Author: Yuri Gorshenin
+
+require 'auctions/base/ausm_model.rb'
 require 'lib/core_ext'
-require 'lib/ausm_model.rb'
-require 'algo/mknapsack'
-require 'algo/rknapsack'
 
 class AUSMModelQueue
   include AUSMModel

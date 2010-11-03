@@ -1,9 +1,9 @@
 # Author: Yuri Gorshenin
 
-require 'ausm_queue/auction_model'
+require 'auctions/ausm_queue/auction_model'
+require 'lib/algo/glpk_mknapsack'
 require 'lib/core_ext'
 require 'logger'
-require 'algo/glpk_mknapsack'
 
 # Class represents AUSMAuction
 # User must create class with arrays of suppiers, demanders and options
