@@ -1,3 +1,5 @@
+#!/usr/bin/ruby
+
 # Author: Yuri Gorshenin
 
 require 'auctions/ausm_queue/auction_server'
