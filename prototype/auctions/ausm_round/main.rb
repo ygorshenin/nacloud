@@ -8,7 +8,7 @@ require 'auctions/base/supplier'
 require 'lib/core_ext'
 
 SUPPLIERS = 10
-DEMANDERS = 10
+DEMANDERS_A, DEMANDERS_B, DEMANDERS_C = 5, 5, 10
 
 MAX_PAY, STEP = 10, 1
 
@@ -17,14 +17,16 @@ def get_percent(cur, best)
 end
 
 def simple_test
-  suppliers = Array.new(SUPPLIERS) { |i| Supplier.new(i, [i + 1, i + 1], [0, 0]) }
-  demanders = Array.new(DEMANDERS) { |i| DummyDemander.new(i, [i + 1, i + 1], MAX_PAY, STEP) }
-  demanders.push(DummyDemander.new(DEMANDERS, [1, 1], MAX_PAY, STEP))
+  suppliers = Array.new(SUPPLIERS) { |i| Supplier.new(i, [10, 10], [0, 0]) }
+  demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new(i, [4, 6], MAX_PAY, STEP, [i * 2, i * 2 + 1]) }
+  demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new(i + DEMANDERS_A, [6, 4], MAX_PAY, STEP, [i * 2, i * 2 + 1]) }
+  demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new(i + DEMANDERS_A + DEMANDERS_B, [5, 5], MAX_PAY, STEP, [(i / 2) * 2, (i / 2) * 2 + 1]) }
+  demanders = demanders_a + demanders_b + demanders_c
   
   suppliers.shuffle!
   demanders.shuffle!
   
-  auction = AUSMServerRound.new(suppliers, demanders, :max_iterations => 5)
+  auction = AUSMServerRound.new(suppliers, demanders, :max_iterations => 50)
   allocation = auction.run_auction[:allocation]
 
   puts "final allocation:"
@@ -36,7 +38,7 @@ def simple_test
   end
 
   total_profit, total_utility = 0, 0
-  optimal_profit, optimal_utility = 100, 100
+  optimal_profit, optimal_utility = 200, 200
   allocation.each do |supplier_id, demanders|
     demanders.each do |demander_id, info|
      total_profit += info[:bid][:pay]

@@ -81,7 +81,7 @@ class GLPKMDMK
     result
   end
 
-  public
+  private
 
   def dump_model(options = {})
     preferences = ''
