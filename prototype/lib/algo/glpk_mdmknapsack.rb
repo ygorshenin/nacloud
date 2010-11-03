@@ -50,6 +50,7 @@ class GLPKMDMK
       :weights => 'Weights',
       :costs => 'Costs',
       :bounds => 'Bounds',
+      :preferences => 'Preferences',
       :result => 'Profit',
       :model_file => 'knapsack.mod',
       :data_file => 'knapsack.dat',
@@ -57,53 +58,86 @@ class GLPKMDMK
       :variable_name => 'x',
       :knapsacks_bounds => 'KnapsacksBounds',
       :only_one_knapsack => 'OnlyOneKnapsack',
+      :preferences_bounds => 'PreferencesBounds',
       :glpsol => 'glpsol',
       :dump_model => true,
       :dump_data => true,
     }.merge(options)
   end
 
-  def solve(values, requirements, bounds)
+  def solve(values, requirements, bounds, preferences = nil)
     return [0, []] if values.empty? or bounds.empty?
     return [values.sum, [0] * values.size] if bounds.first.empty?
-    dump_model if @options[:dump_model]
-    dump_data(values, requirements, bounds) if @options[:dump_data]
+    
+    dump_model(:preferences => preferences) if @options[:dump_model]
+    dump_data(values, requirements, bounds, preferences) if @options[:dump_data]
+    
     `#{@options[:glpsol]} --model #{@options[:model_file]} --data #{@options[:data_file]}`
     result = get_result(values.size)
+    
     File.delete(@options[:output_file])
     File.delete(@options[:model_file]) if @options[:dump_model]
     File.delete(@options[:data_file]) if @options[:dump_data]
     result
   end
 
-  private
+  public
 
-  def dump_model
+  def dump_model(options = {})
+    preferences = ''
+    if options[:preferences]
+      preferences = "param #{@options[:preferences]} { i in #{@options[:items]}, k in #{@options[:knapsacks]} } binary;"
+      preferences += "\n\ns.t. #{@options[:preferences_bounds]} { i in #{@options[:items]}, k in #{@options[:knapsacks]} } : #{@options[:variable_name]}[i, k] <= #{@options[:preferences]}[i, k];"
+    end
     model = <<END_OF_MODEL
 set #{@options[:items]};
+
 set #{@options[:dimensions]};
+
 set #{@options[:knapsacks]};
+
 param #{@options[:weights]} { i in #{@options[:items]}, j in #{@options[:dimensions]} };
+
 param #{@options[:costs]} { i in #{@options[:items]} };
+
 param #{@options[:bounds]} { k in #{@options[:knapsacks]}, j in #{@options[:dimensions]} };
-var x { i in #{@options[:items]}, k in #{@options[:knapsacks]} } binary;
-maximize #{@options[:result]}: sum { i in #{@options[:items]}, k in #{@options[:knapsacks]} } x[i, k] * #{@options[:costs]}[i];
-s.t. #{@options[:knapsacks_bounds]} { k in #{@options[:knapsacks]}, j in #{@options[:dimensions]} }: sum { i in #{@options[:items]} } x[i, k] * #{@options[:weights]}[i, j] <= #{@options[:bounds]}[k, j];
-s.t. #{@options[:only_one_knapsack]} { i in #{@options[:items]} } : sum { k in #{@options[:knapsacks]} } x[i, k] <= 1;
+
+var #{@options[:variable_name]} { i in #{@options[:items]}, k in #{@options[:knapsacks]} } binary;
+
+maximize #{@options[:result]}: sum { i in #{@options[:items]}, k in #{@options[:knapsacks]} } #{@options[:variable_name]}[i, k] * #{@options[:costs]}[i];
+
+s.t. #{@options[:knapsacks_bounds]} { k in #{@options[:knapsacks]}, j in #{@options[:dimensions]} }:
+
+sum { i in #{@options[:items]} } #{@options[:variable_name]}[i, k] * #{@options[:weights]}[i, j] <= #{@options[:bounds]}[k, j];
+
+s.t. #{@options[:only_one_knapsack]} { i in #{@options[:items]} } : sum { k in #{@options[:knapsacks]} } #{@options[:variable_name]}[i, k] <= 1;
+
+#{preferences}
+
 solve;
+
 printf: "#{@options[:result]}:%f\\n", #{@options[:result]} > "#{@options[:output_file]}";
+
 printf { i in #{@options[:items]}, k in #{@options[:knapsacks]} : x[i, k] = 1 }: "%d->%d\\n", i, k >> "#{@options[:output_file]}";
+
 end;
+
 END_OF_MODEL
     File.open(@options[:model_file], 'w') do |file|
       file.puts model
     end
   end
 
-  def dump_data(values, requirements, bounds)
+  def dump_data(values, requirements, bounds, pref = nil)
     items, knapsacks, dimensions = [values, bounds, bounds.first].map { |v| (0 ... v.size).to_a }
     weights = dimensions.join(' ') + ":=\n" +
       items.zip(requirements).map { |v| v.join(' ') }.join("\n")
+
+    preferences = ''
+    if pref
+      preferences = "param #{@options[:preferences]}:\n" +
+        knapsacks.join(' ') + ":=\n" +items.zip(pref).map { |v| v.join(' ') }.join("\n") + ';'
+    end
     
     data = <<END_OF_DATA
 set #{@options[:items]}:=#{items.join(' ')};
@@ -114,6 +148,7 @@ param #{@options[:costs]}:=#{items.zip(values).map { |v| v.join(' ') }.join(',')
 param #{@options[:bounds]}:
 #{dimensions.join(' ')}:=
 #{knapsacks.zip(bounds).map { |v| v.join(' ') }.join("\n")};
+#{preferences}
 end;
 END_OF_DATA
     File.open(@options[:data_file], 'w') do |file|
