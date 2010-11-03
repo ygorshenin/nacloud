@@ -1,9 +1,0 @@
-class AUSMAuctionRound
-  def initialize(suppiers, demanders, options={})
-    @suppiers, @demanders = suppiers, demanders
-    @options = {
-      :min_iterations => 4,
-      :max_iterations => 50,
-    }.merge(options)
-  end
-end
