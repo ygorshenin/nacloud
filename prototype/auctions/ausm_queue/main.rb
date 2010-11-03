@@ -15,16 +15,12 @@ def get_percent(cur, best)
 end
 
 def simple_test
-  suppliers = Array.new(SUPPLIERS) { |i| Supplier.new(i, [10, 10], [0, 0]) }
-  demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new(i, [4, 6], 10, 1, [2 * i, 2 * i + 1]) }
-  demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new(DEMANDERS_A + i, [6, 4], 10, 1, [2 * i, 2 * i + 1]) }
-  demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new(DEMANDERS_A + DEMANDERS_B + i, [5, 5], 10, 1, [(i / 2) * 2, (i / 2) * 2 + 1]) }
+  suppliers = Array.new(SUPPLIERS) { |i| Supplier.new('Lambda' + i.to_s, [10, 10], [0, 0]) }
+  demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new('Alpha' + i.to_s, [4, 6], 10, 1, ['Lambda' + (2 * i).to_s, 'Lambda' + (2 * i + 1).to_s]) }
+  demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new('Beta' + i.to_s, [6, 4], 10, 1, ['Lambda' + (2 * i).to_s, 'Lambda' + (2 * i + 1).to_s]) }
+  demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new('Gamma' + i.to_s, [5, 5], 10, 1, ['Lambda' + ((i / 2) * 2).to_s, 'Lambda' + ((i / 2) * 2 + 1).to_s]) }
 
-  # demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new(i, [4, 6], 10, 1, (0 ... SUPPLIERS).to_a) }
-  # demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new(DEMANDERS_A + i, [6, 4], 10, 1, (0 ... SUPPLIERS).to_a) }
-  # demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new(DEMANDERS_A + DEMANDERS_B + i, [5, 5], 10, 1, (0 ... SUPPLIERS).to_a) }
-  
-  demanders = demanders_a + demanders_b + demanders_c
+  demanders = demanders_a.shuffle + demanders_b.shuffle + demanders_c.shuffle
   
   auction = AUSMServerQueue.new(suppliers, demanders, :max_iterations => 100)
   allocation = auction.run_auction[:allocation]
