@@ -17,10 +17,10 @@ def get_percent(cur, best)
 end
 
 def simple_test
-  suppliers = Array.new(SUPPLIERS) { |i| Supplier.new(i, [10, 10], [0, 0]) }
-  demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new(i, [4, 6], MAX_PAY, STEP, [i * 2, i * 2 + 1]) }
-  demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new(i + DEMANDERS_A, [6, 4], MAX_PAY, STEP, [i * 2, i * 2 + 1]) }
-  demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new(i + DEMANDERS_A + DEMANDERS_B, [5, 5], MAX_PAY, STEP, [(i / 2) * 2, (i / 2) * 2 + 1]) }
+  suppliers = Array.new(SUPPLIERS) { |i| Supplier.new('Eva' + i.to_s, [10, 10], [0, 0]) }
+  demanders_a = Array.new(DEMANDERS_A) { |i| DummyDemander.new('Alice' + i.to_s, [4, 6], MAX_PAY, STEP, ['Eva' + (i * 2).to_s, 'Eva' + (i * 2 + 1).to_s]) }
+  demanders_b = Array.new(DEMANDERS_B) { |i| DummyDemander.new('Bob' + i.to_s, [6, 4], MAX_PAY, STEP, ['Eva' + (i * 2).to_s, 'Eva' + (i * 2 + 1).to_s]) }
+  demanders_c = Array.new(DEMANDERS_C) { |i| DummyDemander.new('Cristine' + i.to_s, [5, 5], MAX_PAY, STEP, ['Eva' + ((i / 2) * 2).to_s, 'Eva' + ((i / 2) * 2 + 1).to_s]) }
   demanders = demanders_a + demanders_b + demanders_c
   
   suppliers.shuffle!

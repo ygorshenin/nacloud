@@ -6,8 +6,6 @@ require 'lib/keyid'
 class AUSMModelRound
   include AUSMModel
 
-  # WARNING: this method doesn't use lower costs limitations and
-  # demanders preferences
   # bids is an array of hashes { :demander => demander, :bid => bid }
   def allocate_bids(bids)
     demanders = {} # maps demander_id => { :demander => demander, :bid => bid }
