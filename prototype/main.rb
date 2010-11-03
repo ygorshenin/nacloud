@@ -1,6 +1,6 @@
 require 'supplier'
 require 'demander'
-require 'auction_server'
+require 'ausm_queue/auction_server'
 require 'lib/core_ext'
 
 SUPPLIERS = 10

@@ -1,6 +1,6 @@
 # Author: Yuri Gorshenin
 
-require 'auction_model'
+require 'ausm_queue/auction_model'
 require 'lib/core_ext'
 require 'logger'
 
