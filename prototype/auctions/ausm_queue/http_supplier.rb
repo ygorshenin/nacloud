@@ -19,14 +19,20 @@ def parse_options(argv)
 
   parser.parse(*argv)
 
-  if not file
+  unless file
     STDERR.puts "config_file must be specified!"
     exit -1
   end
-  
-  options = get_options_from_file(file).merge(options) if file
+
+  options = get_options_from_file(file).merge(options)
+
+  unless options[:dimensions] and options[:lower_costs] and options[:id]
+    STDERR.puts "supplier parameters must be specified in config file!"
+    exit -1
+  end
+    
   options[:server] ||= 'localhost'
-  options[:port] ||= 80
+  options[:port] ||= 8080
   options
 end
 
@@ -34,7 +40,7 @@ def register_supplier(options)
   data = { :id => options[:id], :dimensions => options[:dimensions], :lower_costs => options[:lower_costs] }
   STDERR.puts data.inspect
   Net::HTTP.start(options[:server], options[:port]) do |http|
-    responce, body = http.post('/registration', YAML::dump(data))
+    response, body = http.post('/registration', YAML::dump(data))
     STDERR.puts body
   end
 end
