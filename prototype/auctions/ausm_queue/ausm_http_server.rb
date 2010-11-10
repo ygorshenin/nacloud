@@ -2,7 +2,9 @@
 
 # Author: Yuri Gorshenin
 
+require 'auctions/ausm_queue/auction_model'
 require 'auctions/base/supplier'
+require 'lib/algo/glpk_mdknapsack'
 require 'lib/ext/core_ext'
 require 'lib/net/http_server'
 require 'lib/options'
@@ -35,11 +37,18 @@ class AUSMHTTPServerQueue
     
     timing = Thread.new do
       @logger.info "registration begins"
+      
       @mutex.synchronize { @state = :registration }
       sleep @options[:registration_period]
+      
       @logger.info "registration ends"
-      @mutex.synchronize { @state = :auction }
+      
+      @mutex.synchronize do
+        @state = :auction
+        @model = AUSMModelQueue.new(@suppliers, GLPKMDKnapsack.new)
+      end
       @logger.info "auction begins"
+      
       sleep 24.hours
     end
 
@@ -75,7 +84,7 @@ class AUSMHTTPServerQueue
 <b>state:</b> #@state<br>
 <b>registration period (sec):</b> #{@options[:registration_period]}<br>
 <b>deadline period (sec):</b> #{@options[:deadline_period]}<br>
-<b>current time:</b> #{Time.now}<br>
+<b>server time:</b> #{Time.now}<br>
 <b>registration start:</b> #@registration_start<br>
 <b>registration end:</b> #@registration_end<br>
 <b>auction start:</b> #@auction_start<br>
@@ -93,10 +102,11 @@ END_OF_RESPONSE
     resource = get_resource(headers).downcase
     case resource
     when '/registration'
-      content = YAML.load(read_content(headers, session))
+      content = YAML::load(read_content(headers, session))
       supplier = Supplier.new(content[:id], content[:dimensions], content[:lower_costs])
       register_supplier(supplier, result)
     when '/bid'
+      bid = YAML::load(read_content(headers, session))
     end
   end
 
