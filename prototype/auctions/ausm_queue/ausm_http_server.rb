@@ -3,6 +3,7 @@
 # Author: Yuri Gorshenin
 
 require 'auctions/ausm_queue/auction_model'
+require 'auctions/base/demander'
 require 'auctions/base/supplier'
 require 'lib/algo/glpk_mdknapsack'
 require 'lib/ext/core_ext'
@@ -78,6 +79,25 @@ class AUSMHTTPServerQueue
     end
   end
 
+  def apply_bid(demander, bid, result)
+    @logger.info("applying bid #{bid.inspect} from #{demander}")
+    @mutex.synchronize do
+      status, reason, response = 200, 'OK', ''
+      if @state == :auction
+        response = @model.try_bid(demander, bid).to_s
+        @logger.info("status: #{response}")
+      else
+        status, reason, response = 503, 'Service Unavailable', 'Auction is closed'
+        @logger.info "bid failed"
+      end
+      result.replace({
+                       :status => status,
+                       :reason => reason,
+                       :response => response,
+                     })
+    end
+  end
+
   def get_status(result)
     response = <<END_OF_RESPONSE
 <tt>
@@ -103,10 +123,12 @@ END_OF_RESPONSE
     case resource
     when '/registration'
       content = YAML::load(read_content(headers, session))
-      supplier = Supplier.new(content[:id], content[:dimensions], content[:lower_costs])
+      supplier = Supplier.new(content[:supplier_id], content[:dimensions], content[:lower_costs])
       register_supplier(supplier, result)
     when '/bid'
-      bid = YAML::load(read_content(headers, session))
+      content = YAML::load(read_content(headers, session))
+      demander = Demander.new(content[:demander_id])
+      apply_bid(demander, content[:bid], result)
     end
   end
 

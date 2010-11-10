@@ -9,7 +9,7 @@ class AUSMModelQueue
   def try_bid(demander, bid)
     Array(bid[:supplier_id]).each do |supplier_id|
       supplier = @suppliers[supplier_id]
-      if supplier.acceptible_bid?(bid) and can_add_without_replacement?(supplier, bid)
+      if supplier and supplier.acceptible_bid?(bid) and can_add_without_replacement?(supplier, bid)
         add_to_allocation(supplier, demander, bid)
         return :accepted
       end
@@ -17,7 +17,7 @@ class AUSMModelQueue
     
     Array(bid[:supplier_id]).each do |supplier_id|
       supplier = @suppliers[supplier_id]
-      return :accepted if supplier.acceptible_bid?(bid) and
+      return :accepted if supplier and supplier.acceptible_bid?(bid) and
         try_replace(supplier, demander, bid) == :accepted
     end
     return :rejected

@@ -4,6 +4,7 @@
 
 require 'lib/ext/core_ext'
 require 'lib/options'
+require 'net/http'
 require 'optparse'
 
 def parse_options(argv)
@@ -13,7 +14,7 @@ def parse_options(argv)
   parser.on("--config_file=CONFIG_FILE_YAML") { |config| file = config }
   parser.on("--server=SERVER") { |server| options[:server] = server }
   parser.on("--port=PORT") { |port| options[:port] = port.to_i }
-  parser.on("--pay=PAY") { |pay| options[:bid][:pay] = pay }
+  parser.on("--pay=PAY") { |pay| options[:bid][:pay] = pay.to_f }
   parser.on("--supplier_id=ID") { |id| options[:bid][:supplier_id] = id }
   parser.on("--demander_id=ID") { |id| options[:demander_id] = id }
   
