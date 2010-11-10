@@ -2,82 +2,110 @@
 
 # Author: Yuri Gorshenin
 
+require 'auctions/base/supplier'
 require 'lib/ext/core_ext'
+require 'lib/net/http_server'
 require 'lib/options'
-require 'logger'
 require 'optparse'
-require 'socket'
 require 'thread'
-
-# Simple HTTP server
-# Redirects post and get requests to model
-module SimpleHTTPServer
-  def run_http_server(host, port, logfile = nil)
-    @server = TCPServer.new(host, port)
-    @logger ||= Logger.new(logfile || STDERR)
-    loop do
-      Thread.new(@server.accept) do |session|
-        @logger.info("new session: #{session.peeraddr.inspect}")
-        headers = read_headers(session)
-        request_type = get_request_type(headers)
-        resource = get_resource(headers)
-        @logger.info("headers: #{headers}")
-        @logger.info("request-type: #{request_type}")
-        @logger.info("resource: #{resource}")
-
-        session.print "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
-        session.print "Hello, Client!\r\n"
-
-        session.close
-      end
-    end
-  end
-
-  private
-
-  def get_request_type(headers)
-    case headers
-    when /^GET/i : return :get
-    when /^POST/i : return :post
-    end
-  end
-
-  def get_resource(headers)
-    headers.lines.to_a[0].gsub(/^\w+/, '').gsub(/HTTP.*$/i, '')
-  end
-  
-  def read_headers(session)
-    header = ''
-    while not (line = session.gets).strip.empty? do
-        header += line
-    end
-    header
-  end
-  
-  def get_content_length(headers)
-    headers.match(/Content-Length:\s*(\d+)/i)[1].to_i
-  end
-
-  def read_content(headers, session)
-    session.read(get_content_length(headers))
-  end
-end
 
 class AUSMHTTPServerQueue
   include SimpleHTTPServer
   
   def initialize(options = {})
     @options = {
-      :registration_period => 10.minutes,
+      :registration_period => 1.minutes,
       :deadline_period => 4.minutes,
       :port => 8080,
     }.merge(options)
     @logger = Logger.new(@options[:logfile] || STDERR)
-    @suppliers = []
+    
+    @state = :new
+    
+    @suppliers, @id_to_supplier_index = [], {}
+
+    @mutex = Mutex.new # Global model mutex
   end
 
   def run_auction
-    run_http_server('localhost', @options[:port])
+    server = Thread.new { run_http_server('localhost', @options[:port]) }
+
+    @registration_start = Time.now
+    @auction_start = @registration_end = Time.now + @options[:registration_period]
+    
+    timing = Thread.new do
+      @logger.info "registration begins"
+      @mutex.synchronize { @state = :registration }
+      sleep @options[:registration_period]
+      @logger.info "registration ends"
+      @mutex.synchronize { @state = :auction }
+      @logger.info "auction begins"
+      sleep 24.hours
+    end
+
+    timing.join
+  end
+  
+  private
+  
+  def register_supplier(supplier, result)
+    @logger.info("registering supplier <#{supplier.to_s}>")
+    @mutex.synchronize do
+      status, reason, response = 200, 'OK', 'Accepted'
+      if @state == :registration
+        index = @id_to_supplier_index[supplier.get_id] || @suppliers.size
+        @id_to_supplier_index[supplier.get_id] = index
+        @suppliers[index] = supplier
+        @logger.info "registration succeeded"
+      else
+        status, reason, response = 503, 'Service Unavailable', 'Registration is closed'
+        @logger.info "registration failed"
+      end
+      result.replace({
+                       :status => status,
+                       :reason => reason,
+                       :response => response,
+                     })
+    end
+  end
+
+  def get_status(result)
+    response = <<END_OF_RESPONSE
+<tt>
+<b>state:</b> #@state<br>
+<b>registration period (sec):</b> #{@options[:registration_period]}<br>
+<b>deadline period (sec):</b> #{@options[:deadline_period]}<br>
+<b>current time:</b> #{Time.now}<br>
+<b>registration start:</b> #@registration_start<br>
+<b>registration end:</b> #@registration_end<br>
+<b>auction start:</b> #@auction_start<br>
+<b>suppliers:</b><br>
+#{@suppliers.collect { |supplier| supplier.to_s + "<br>" }}
+END_OF_RESPONSE
+    result.replace({
+                     :status => 200,
+                     :reason => 'OK',
+                     :response => response,
+                   })
+  end
+  
+  def http_post(headers, session, result)
+    resource = get_resource(headers).downcase
+    case resource
+    when '/registration'
+      content = YAML.load(read_content(headers, session))
+      supplier = Supplier.new(content[:id], content[:dimensions], content[:lower_costs])
+      register_supplier(supplier, result)
+    when '/bid'
+    end
+  end
+
+  def http_get(headers, session, result)
+    resource = get_resource(headers).downcase
+    case resource
+    when '/info'
+      get_status(result)
+    end
   end
 end
 

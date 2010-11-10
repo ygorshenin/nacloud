@@ -22,9 +22,9 @@ module SimpleHTTPServer
         @logger.info(headers.lines.to_a[0].strip)
         
         result = {
-          :status => 500,
-          :reason => 'Internal Server Error',
-          :response => "Behavior doesn't supported",
+          :status => 404,
+          :reason => 'Not Found',
+          :response => 'Requested service not found',
         }
         
         send(request_type, headers, session, result)
