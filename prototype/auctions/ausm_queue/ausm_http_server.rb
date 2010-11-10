@@ -4,6 +4,7 @@
 
 require 'auctions/ausm_queue/auction_model'
 require 'auctions/base/demander'
+require 'auctions/base/html_allocation'
 require 'auctions/base/supplier'
 require 'lib/algo/glpk_mdknapsack'
 require 'lib/ext/core_ext'
@@ -23,7 +24,7 @@ class AUSMHTTPServerQueue
     }.merge(options)
     @logger = Logger.new(@options[:logfile] || STDERR)
     
-    @state = :new
+    @state, @info = :new, []
     
     @suppliers, @id_to_supplier_index = [], {}
 
@@ -47,6 +48,7 @@ class AUSMHTTPServerQueue
       @mutex.synchronize do
         @state = :auction
         @model = AUSMModelQueue.new(@suppliers, GLPKMDKnapsack.new)
+        @last_bid_time = Time.now
       end
       @logger.info "auction begins"
       
@@ -84,8 +86,17 @@ class AUSMHTTPServerQueue
     @mutex.synchronize do
       status, reason, response = 200, 'OK', ''
       if @state == :auction
-        response = @model.try_bid(demander, bid).to_s
+        response = @model.try_bid(demander, bid)
+        @last_bid_time = Time.now if response == :accepted
         @logger.info("status: #{response}")
+
+        @info.push({
+                     :allocation => @model.allocation.dup,
+                     :demander => demander,
+                     :bid => bid,
+                     :time => Time.now,
+                     :status => response,
+                   })
       else
         status, reason, response = 503, 'Service Unavailable', 'Auction is closed'
         @logger.info "bid failed"
@@ -98,6 +109,22 @@ class AUSMHTTPServerQueue
     end
   end
 
+  def get_info
+    parts = []
+    @mutex.synchronize do
+      parts = @info.reverse.map do |item|
+<<END_OF_PART
+<b>bid:</b> #{HTMLAllocation::stringify_bid(item[:demander], item[:bid])}<br>
+<b>time:</b> #{item[:time]}<br>
+<b>status:</b> #{item[:status]}<br>
+<b>allocation:</b><br>
+#{HTMLAllocation::represent(item[:allocation])}
+END_OF_PART
+      end
+    end
+    parts.join('<hr>')
+  end
+
   def get_status(result)
     response = <<END_OF_RESPONSE
 <tt>
@@ -108,8 +135,13 @@ class AUSMHTTPServerQueue
 <b>registration start:</b> #@registration_start<br>
 <b>registration end:</b> #@registration_end<br>
 <b>auction start:</b> #@auction_start<br>
+<b>last bid time:</b> #@last_bid_time<br>
 <b>suppliers:</b><br>
 #{@suppliers.collect { |supplier| supplier.to_s + "<br>" }}
+<p>
+<b>info:</b><br>
+#{get_info}
+</p>
 END_OF_RESPONSE
     result.replace({
                      :status => 200,
@@ -135,7 +167,7 @@ END_OF_RESPONSE
   def http_get(headers, session, result)
     resource = get_resource(headers).downcase
     case resource
-    when '/info'
+    when '/'
       get_status(result)
     end
   end
