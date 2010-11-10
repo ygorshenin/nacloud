@@ -49,8 +49,6 @@ class AUSMModelQueue
     return :rejected
   end
 
-  private
-
   # Verifies if there are enough space in suppliers's good to add that
   # bid without replacement.  WARNING: doesn't verifies basic costs
   # limitation
