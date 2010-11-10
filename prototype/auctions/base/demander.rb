@@ -8,4 +8,8 @@ class Demander
   def get_id
     @demander_id
   end
+
+  def to_s
+    "#@demander_id"
+  end
 end
