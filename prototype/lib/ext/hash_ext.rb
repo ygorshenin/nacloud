@@ -17,4 +17,27 @@ class Hash
     end
     self
   end
+
+  def recursive_merge!(other)
+    other.each do |key, value|
+      if self.has_key?(key) and self[key].is_a?(Hash) and value.is_a?(Hash)
+        self[key].recursive_merge!(value)
+      else
+        self[key] = value
+      end
+    end
+    self
+  end
+
+  def recursive_merge(other)
+    result = self.dup
+    other.each do |key, value|
+      if result.has_key?(key) and result[key].is_a?(Hash) and value.is_a?(Hash)
+        result[key] = result[key].recursive_merge(value)
+      else
+        result[key] = value
+      end
+    end
+    result
+  end
 end
