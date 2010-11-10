@@ -29,4 +29,8 @@ class Supplier
     end
     return false
   end
+
+  def to_s
+    "id: #{get_id}, dimensions: #{dimensions.inspect}, lower costs: #{lower_costs.inspect}"
+  end
 end

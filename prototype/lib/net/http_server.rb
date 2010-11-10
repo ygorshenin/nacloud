@@ -19,9 +19,14 @@ module SimpleHTTPServer
         @logger.info("new session: #{session.peeraddr.inspect}")
         headers = read_headers(session)
         request_type = get_request_type(headers)
-        @logger.info("headers: #{headers}")
-        @logger.info("request-type: #{request_type}")
-        result = { :status => 500, :reason => 'Internal Server Error', :response => "Behavior doesn't supported" }
+        @logger.info(headers.lines.to_a[0].strip)
+        
+        result = {
+          :status => 500,
+          :reason => 'Internal Server Error',
+          :response => "Behavior doesn't supported",
+        }
+        
         send(request_type, headers, session, result)
         
         session.print "#{HTTP_VERSION} #{result[:status]} #{result[:reason]}\r\n"
