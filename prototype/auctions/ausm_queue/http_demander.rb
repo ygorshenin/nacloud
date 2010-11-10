@@ -15,17 +15,13 @@ def parse_options(argv)
   parser.on("--server=SERVER") { |server| options[:server] = server }
   parser.on("--port=PORT") { |port| options[:port] = port.to_i }
   parser.on("--pay=PAY") { |pay| options[:bid][:pay] = pay.to_f }
-  parser.on("--supplier_id=ID") { |id| options[:bid][:supplier_id] = id }
+  parser.on("--supplier_id=COMMA_LIST_OR_SINGLE_ID") { |list| options[:bid][:supplier_id] = list.split(',') }
+  parser.on("--dimensions=COMMA_LIST") { |list| options[:bid][:dimensions] = list.split(',').map { |v| v.to_f } }
   parser.on("--demander_id=ID") { |id| options[:demander_id] = id }
   
   parser.parse(*argv)
   
-  unless file
-    STDERR.puts "config_file must be specified!"
-    exit -1
-  end
-  
-  options = get_options_from_file(file).recursive_merge(options)
+  options = get_options_from_file(file).recursive_merge(options) if file
 
   unless options[:demander_id]
     STDERR.puts "demander_id must be specified!"

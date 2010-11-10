@@ -63,14 +63,14 @@ class AUSMHTTPServerQueue
   def register_supplier(supplier, result)
     @logger.info("registering supplier <#{supplier.to_s}>")
     @mutex.synchronize do
-      status, reason, response = 200, 'OK', 'Accepted'
+      status, reason, response = 200, 'OK', 'accepted'
       if @state == :registration
         index = @id_to_supplier_index[supplier.get_id] || @suppliers.size
         @id_to_supplier_index[supplier.get_id] = index
         @suppliers[index] = supplier
         @logger.info "registration succeeded"
       else
-        status, reason, response = 503, 'Service Unavailable', 'Registration is closed'
+        status, reason, response = 503, 'Service Unavailable', 'registration is closed'
         @logger.info "registration failed"
       end
       result.replace({

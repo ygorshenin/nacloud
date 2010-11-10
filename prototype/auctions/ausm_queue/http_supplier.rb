@@ -17,15 +17,12 @@ def parse_options(argv)
   parser.on("--server=SERVER") { |server| options[:server] = server }
   parser.on("--port=PORT") { |port| options[:port] = port.to_i }
   parser.on("--supplier_id=ID") { |id| options[:supplier_id] = id }
+  parser.on("--dimensions=COMMA_LIST") { |list| options[:dimensions] = list.split(',').map { |v| v.to_f } }
+  parser.on("--lower_costs=COMMA_LIST") { |list| options[:lower_costs] = list.split(',').map { |v| v.to_f } }
 
   parser.parse(*argv)
 
-  unless file
-    STDERR.puts "config_file must be specified!"
-    exit -1
-  end
-
-  options = get_options_from_file(file).merge(options)
+  options = get_options_from_file(file).merge(options) if file
 
   unless options[:dimensions] and options[:lower_costs] and options[:supplier_id]
     STDERR.puts "supplier parameters must be specified in config file!"
