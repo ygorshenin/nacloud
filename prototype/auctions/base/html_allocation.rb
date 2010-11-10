@@ -1,3 +1,7 @@
+# Author: Yuri Gorshenin
+
+# Class represents sets of functions, that helps
+# obtain well-look representation of auction allocation
 class HTMLAllocation
   # returns allocation representation as html table
   def self.represent(allocation)
