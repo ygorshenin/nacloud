@@ -19,49 +19,58 @@ class AUSMHTTPServerQueue
   def initialize(options = {})
     @options = {
       :registration_period => 1.minutes,
-      :deadline_period => 4.minutes,
+      :deadline_period => 1.minutes,
+      :heart_beat => 1.second,
+      :idle_time => 24.hours,
       :port => 8080,
     }.merge(options)
     @logger = Logger.new(@options[:logfile] || STDERR)
-    
-    @state, @info = :new, []
-    
-    @suppliers, @id_to_supplier_index = [], {}
-
+    @state, @info = :new, [] # Current auction state and auction information
+    @suppliers, @id_to_supplier_index = [], {} # Array of registered suppliers and Hash { :supplier_id => index in array }
     @mutex = Mutex.new # Global model mutex
   end
 
   def run_auction
-    server = Thread.new { run_http_server('localhost', @options[:port]) }
-
-    @registration_start = Time.now
-    @auction_start = @registration_end = Time.now + @options[:registration_period]
-    
-    timing = Thread.new do
-      @logger.info "registration begins"
-      
-      @mutex.synchronize { @state = :registration }
-      sleep @options[:registration_period]
-      
-      @logger.info "registration ends"
-      
-      @mutex.synchronize do
-        @state = :auction
-        @model = AUSMModelQueue.new(@suppliers, GLPKMDKnapsack.new)
-        @last_bid_time = Time.now
-      end
-      @logger.info "auction begins"
-      
-      sleep 24.hours
-    end
-
-    timing.join
+    Thread.new { run_http_server('localhost', @options[:port]) }
+    Thread.new { timing }.join
+    sleep @options[:idle_time]
   end
   
   private
+
+  # Schedule to all auction process
+  def timing
+    @registration_start = Time.now
+    @auction_start = @registration_end = Time.now + @options[:registration_period]
+    
+    @logger.info "registration begins"
+    @mutex.synchronize { @state = :registration }
+    sleep @options[:registration_period]
+    @logger.info "registration ends"
+    
+    @mutex.synchronize do
+      @state = :auction
+      @model = AUSMModelQueue.new(@suppliers, GLPKMDKnapsack.new)
+      @last_bid_time = Time.now
+    end
+    @logger.info "auction begins"
+
+    ok = true
+    while ok do
+      @mutex.synchronize do
+        if Time.now >= @last_bid_time + @options[:deadline_period]
+          @state = :end
+          @logger.info "auction ends"
+          ok = false
+        end
+      end
+      sleep @options[:heart_beat] if ok
+    end
+  end
   
   def register_supplier(supplier, result)
-    @logger.info("registering supplier <#{supplier.to_s}>")
+    @logger.info "registering supplier <#{supplier.to_s}>"
+    
     @mutex.synchronize do
       status, reason, response = 200, 'OK', 'accepted'
       if @state == :registration
@@ -82,13 +91,14 @@ class AUSMHTTPServerQueue
   end
 
   def apply_bid(demander, bid, result)
-    @logger.info("applying bid #{bid.inspect} from #{demander}")
+    @logger.info "applying bid #{bid.inspect} from #{demander}"
+    
     @mutex.synchronize do
       status, reason, response = 200, 'OK', ''
       if @state == :auction
         response = @model.try_bid(demander, bid)
         @last_bid_time = Time.now if response == :accepted
-        @logger.info("status: #{response}")
+        @logger.info "status: #{response}"
 
         @info.push({
                      :allocation => @model.allocation.dup,
@@ -98,7 +108,7 @@ class AUSMHTTPServerQueue
                      :status => response,
                    })
       else
-        status, reason, response = 503, 'Service Unavailable', 'Auction is closed'
+        status, reason, response = 503, 'Service Unavailable', 'auction is closed'
         @logger.info "bid failed"
       end
       result.replace({
@@ -109,6 +119,7 @@ class AUSMHTTPServerQueue
     end
   end
 
+  # Gets auction info as list of tables and data
   def get_info
     parts = []
     @mutex.synchronize do
@@ -125,17 +136,18 @@ END_OF_PART
     parts.join('<hr>')
   end
 
+  # Gets all important server variables and auction info as HTML document
   def get_status(result)
     response = <<END_OF_RESPONSE
 <tt>
 <b>state:</b> #@state<br>
 <b>registration period (sec):</b> #{@options[:registration_period]}<br>
 <b>deadline period (sec):</b> #{@options[:deadline_period]}<br>
-<b>server time:</b> #{Time.now}<br>
 <b>registration start:</b> #@registration_start<br>
 <b>registration end:</b> #@registration_end<br>
 <b>auction start:</b> #@auction_start<br>
 <b>last bid time:</b> #@last_bid_time<br>
+<b>server time:</b> #{Time.now}<br>
 <b>suppliers:</b><br>
 #{@suppliers.collect { |supplier| supplier.to_s + "<br>" }}
 <p>
@@ -149,10 +161,10 @@ END_OF_RESPONSE
                      :response => response,
                    })
   end
-  
+
+  # Process all HTTP POST requests
   def http_post(headers, session, result)
-    resource = get_resource(headers).downcase
-    case resource
+    case get_resource(headers).downcase
     when '/registration'
       content = YAML::load(read_content(headers, session))
       supplier = Supplier.new(content[:supplier_id], content[:dimensions], content[:lower_costs])
@@ -164,9 +176,9 @@ END_OF_RESPONSE
     end
   end
 
+  # Process all HTTP GET requests
   def http_get(headers, session, result)
-    resource = get_resource(headers).downcase
-    case resource
+    case get_resource(headers).downcase
     when '/'
       get_status(result)
     end
