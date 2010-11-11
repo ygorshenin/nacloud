@@ -11,13 +11,13 @@ def parse_options(argv)
   parser, file = OptionParser.new, nil
   options = { :bid => {} }
 
-  parser.on("--config_file=CONFIG_FILE_YAML") { |config| file = config }
-  parser.on("--server=SERVER") { |server| options[:server] = server }
-  parser.on("--port=PORT") { |port| options[:port] = port.to_i }
-  parser.on("--pay=PAY") { |pay| options[:bid][:pay] = pay.to_f }
-  parser.on("--supplier_id=COMMA_LIST_OR_SINGLE_ID") { |list| options[:bid][:supplier_id] = list.split(',') }
-  parser.on("--dimensions=COMMA_LIST") { |list| options[:bid][:dimensions] = list.split(',').map { |v| v.to_f } }
-  parser.on("--demander_id=ID") { |id| options[:demander_id] = id }
+  parser.on("--config_file=FILE", String) { |config| file = config }
+  parser.on("--server=SERVER", String) { |server| options[:server] = server }
+  parser.on("--port=PORT", Integer) { |port| options[:port] = port }
+  parser.on("--pay=PAY", Float) { |pay| options[:bid][:pay] = pay }
+  parser.on("--supplier_id=LIST", Array) { |list| options[:bid][:supplier_id] = list }
+  parser.on("--dimensions=LIST", Array) { |list| options[:bid][:dimensions] = list.map { |v| v.to_f } }
+  parser.on("--demander_id=ID", String) { |id| options[:demander_id] = id }
   
   parser.parse(*argv)
   
