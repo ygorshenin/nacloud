@@ -8,32 +8,40 @@ require 'auctions/base/html_allocation'
 require 'auctions/base/supplier'
 require 'lib/algo/glpk_mdknapsack'
 require 'lib/ext/core_ext'
-require 'lib/net/http_server'
+require 'lib/net/simple_http_server'
 require 'lib/options'
+require 'logger'
 require 'optparse'
 require 'thread'
 
 class AUSMHTTPServerQueue
-  include SimpleHTTPServer
-  
   def initialize(options = {})
     @options = {
       :registration_period => 1.minutes,
       :deadline_period => 1.minutes,
+      :idle_period => 24.hours,
       :heart_beat => 1.second,
-      :idle_time => 24.hours,
       :port => 8080,
     }.merge(options)
+    
     @logger = Logger.new(@options[:logfile] || STDERR)
+    
+    @server = SimpleHTTPServer.new(@options[:port])
+    @server.on(:get, '/') { http_get_status }
+    @server.on(:post, '/registration') { |data| http_register_supplier(data) }
+    @server.on(:post, '/bid') { |data| http_apply_bid(data) }
+    
     @state, @info = :new, [] # Current auction state and auction information
     @suppliers, @id_to_supplier_index = [], {} # Array of registered suppliers and Hash { :supplier_id => index in array }
     @mutex = Mutex.new # Global model mutex
   end
 
   def run_auction
-    Thread.new { run_http_server('localhost', @options[:port]) }
-    Thread.new { timing }.join
-    sleep @options[:idle_time]
+    @server.start
+    timing
+    
+    sleep @options[:idle_period] # Sleeps after auction's end
+    @server.shutdown # Shutdown server
   end
   
   private
@@ -68,36 +76,40 @@ class AUSMHTTPServerQueue
     end
   end
   
-  def register_supplier(supplier, result)
+  def http_register_supplier(data)
+    content = YAML::load(data)
+    supplier = Supplier.new(content[:supplier_id], content[:dimensions], content[:lower_costs])
+    
     @logger.info "registering supplier <#{supplier.to_s}>"
     
     @mutex.synchronize do
-      status, reason, response = 200, 'OK', 'accepted'
       if @state == :registration
         index = @id_to_supplier_index[supplier.get_id] || @suppliers.size
         @id_to_supplier_index[supplier.get_id] = index
         @suppliers[index] = supplier
+        
         @logger.info "registration succeeded"
+        
+        return { :status => 200, :reason => 'OK', :response => 'accepted' }
       else
-        status, reason, response = 503, 'Service Unavailable', 'registration is closed'
         @logger.info "registration failed"
+
+        return { :status => 503, :reason => 'Service Unavailable', :response => 'registration is closed' }
       end
-      result.replace({
-                       :status => status,
-                       :reason => reason,
-                       :response => response,
-                     })
     end
   end
 
-  def apply_bid(demander, bid, result)
+  def http_apply_bid(data)
+    content = YAML::load(data)
+    demander, bid = Demander.new(content[:demander_id]), content[:bid]
+    
     @logger.info "applying bid #{bid.inspect} from #{demander}"
     
     @mutex.synchronize do
-      status, reason, response = 200, 'OK', ''
       if @state == :auction
         response = @model.try_bid(demander, bid)
         @last_bid_time = Time.now if response == :accepted
+        
         @logger.info "status: #{response}"
 
         @info.push({
@@ -105,17 +117,15 @@ class AUSMHTTPServerQueue
                      :demander => demander,
                      :bid => bid,
                      :time => Time.now,
-                     :status => response,
+                     :status => response
                    })
+        
+        return { :status => 200, :reason => 'OK', :response => response.to_s }
       else
-        status, reason, response = 503, 'Service Unavailable', 'auction is closed'
         @logger.info "bid failed"
+        
+        return { :status => 503, :reason => 'Service Unavailable', :response => 'auction is closed' }
       end
-      result.replace({
-                       :status => status,
-                       :reason => reason,
-                       :response => response,
-                     })
     end
   end
 
@@ -138,14 +148,13 @@ END_OF_PART
   end
 
   # Gets all important server variables and auction info as HTML document
-  def get_status(result)
+  def http_get_status
     response = <<END_OF_RESPONSE
 <tt>
-<p>
-<b>state: #@state</b><br>
-</p>
-<b>registration period (sec):</b> #{@options[:registration_period]}<br>
-<b>deadline period (sec):</b> #{@options[:deadline_period]}<br>
+<p><b>state: #@state</b><br></p>
+
+<p>#{@options.collect { |k, v| "<b>#{k}</b>: #{v}<br>" }.sort.join("\n")}</p>
+
 <b>registration start:</b> #@registration_start<br>
 <b>registration end:</b> #@registration_end<br>
 <b>auction start:</b> #@auction_start<br>
@@ -153,38 +162,10 @@ END_OF_PART
 <b>server time:</b> #{Time.now}<br>
 <b>suppliers:</b><br>
 #{@suppliers.collect { |supplier| supplier.to_s + "<br>" }}
-<p>
-<b>info:</b><br>
-#{get_info}
-</p>
+
+<p><b>info:</b><br>#{get_info}</p>
 END_OF_RESPONSE
-    result.replace({
-                     :status => 200,
-                     :reason => 'OK',
-                     :response => response,
-                   })
-  end
-
-  # Process all HTTP POST requests
-  def http_post(headers, session, result)
-    case get_resource(headers).downcase
-    when '/registration'
-      content = YAML::load(read_content(headers, session))
-      supplier = Supplier.new(content[:supplier_id], content[:dimensions], content[:lower_costs])
-      register_supplier(supplier, result)
-    when '/bid'
-      content = YAML::load(read_content(headers, session))
-      demander = Demander.new(content[:demander_id])
-      apply_bid(demander, content[:bid], result)
-    end
-  end
-
-  # Process all HTTP GET requests
-  def http_get(headers, session, result)
-    case get_resource(headers).downcase
-    when '/'
-      get_status(result)
-    end
+    return { :status => 200, :reason => 'OK', :response => response }
   end
 end
 
@@ -195,6 +176,8 @@ def get_options(argv)
   parser.on("--config_file=CONFIG_FILE_YAML")  { |config| file = config }
   parser.on("--registration_period=VAL") { |val| options[:registration_period] = val.to_i }
   parser.on("--deadline_period=VAL") { |val| options[:deadline_period] = val.to_i }
+  parser.on("--idle_period=VAL") { |val| options[:idle_period] = val.to_i }
+  parser.on("--heart_beat=VAL") { |val| options[:heart_beat] = val.to_i }
 
   parser.parse(*argv)
 
