@@ -124,10 +124,11 @@ class AUSMHTTPServerQueue
     parts = []
     @mutex.synchronize do
       parts = @info.reverse.map do |item|
+        status_color = item[:status] == :accepted ? 'green' : 'red'
 <<END_OF_PART
 <b>bid:</b> #{HTMLAllocation::stringify_bid(item[:demander], item[:bid])}<br>
 <b>time:</b> #{item[:time]}<br>
-<b>status:</b> #{item[:status]}<br>
+<b>status: <span style="color:#{status_color}">#{item[:status]}</span></b><br>
 <b>allocation:</b><br>
 #{HTMLAllocation::represent(item[:allocation])}
 END_OF_PART
@@ -140,7 +141,9 @@ END_OF_PART
   def get_status(result)
     response = <<END_OF_RESPONSE
 <tt>
-<b>state:</b> #@state<br>
+<p>
+<b>state: #@state</b><br>
+</p>
 <b>registration period (sec):</b> #{@options[:registration_period]}<br>
 <b>deadline period (sec):</b> #{@options[:deadline_period]}<br>
 <b>registration start:</b> #@registration_start<br>
