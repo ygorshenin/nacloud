@@ -13,12 +13,12 @@ def parse_options(argv)
   parser, file = OptionParser.new, nil
   options = {}
 
-  parser.on("--config_file=CONFIG_FILE_YAML") { |config| file = config }
-  parser.on("--server=SERVER") { |server| options[:server] = server }
-  parser.on("--port=PORT") { |port| options[:port] = port.to_i }
-  parser.on("--supplier_id=ID") { |id| options[:supplier_id] = id }
-  parser.on("--dimensions=COMMA_LIST") { |list| options[:dimensions] = list.split(',').map { |v| v.to_f } }
-  parser.on("--lower_costs=COMMA_LIST") { |list| options[:lower_costs] = list.split(',').map { |v| v.to_f } }
+  parser.on("--config_file=FILE", String) { |config| file = config }
+  parser.on("--server=SERVER", String) { |server| options[:server] = server }
+  parser.on("--port=PORT", Integer) { |port| options[:port] = port }
+  parser.on("--supplier_id=ID", String) { |id| options[:supplier_id] = id }
+  parser.on("--dimensions=LIST", Array) { |list| options[:dimensions] = list.map { |v| v.to_f } }
+  parser.on("--lower_costs=LIST", Array) { |list| options[:lower_costs] = list.map { |v| v.to_f } }
 
   parser.parse(*argv)
 
