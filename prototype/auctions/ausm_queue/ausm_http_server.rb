@@ -173,11 +173,12 @@ def get_options(argv)
   parser, file = OptionParser.new, nil
   options = {}
   
-  parser.on("--config_file=CONFIG_FILE_YAML")  { |config| file = config }
-  parser.on("--registration_period=VAL") { |val| options[:registration_period] = val.to_i }
-  parser.on("--deadline_period=VAL") { |val| options[:deadline_period] = val.to_i }
-  parser.on("--idle_period=VAL") { |val| options[:idle_period] = val.to_i }
-  parser.on("--heart_beat=VAL") { |val| options[:heart_beat] = val.to_i }
+  parser.on("--config_file=FILE", String)  { |config| file = config }
+  parser.on("--registration_period=VAL", Integer) { |val| options[:registration_period] = val }
+  parser.on("--deadline_period=VAL", Integer) { |val| options[:deadline_period] = val }
+  parser.on("--idle_period=VAL", Integer) { |val| options[:idle_period] = val }
+  parser.on("--heart_beat=VAL", Integer) { |val| options[:heart_beat] = val }
+  parser.on("--port=PORT", Integer) { |val| options[:port] = val.to_i }
 
   parser.parse(*argv)
 
