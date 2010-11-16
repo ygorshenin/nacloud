@@ -113,13 +113,13 @@ class AUSMHTTPServerQueue
         @logger.info "status: #{response}"
 
         @info.push({
-                     :allocation => @model.allocation.dup,
+                     :allocation => @model.allocation.copy,
                      :demander => demander,
                      :bid => bid,
                      :time => Time.now,
                      :status => response
                    })
-        
+
         return { :status => 200, :reason => 'OK', :response => response.to_s }
       else
         @logger.info "bid failed"

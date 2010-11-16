@@ -40,4 +40,21 @@ class Hash
     end
     result
   end
+
+  def copy
+    result = {}
+    self.each do |key, value|
+      case value
+      when Hash
+        result[key] = value.copy
+      when Array
+        result[key] = value.dup
+      when String
+        result[key] = value.dup
+      else
+        result[key] = value
+      end
+    end
+    result
+  end
 end
