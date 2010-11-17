@@ -36,4 +36,23 @@ module AllocatorUtils
       raise if not File.directory?(name)
     end
   end
+
+  # Uploads files to remote server
+  def upload_files(source, target, options = {})
+    cmd = "ssh #{options[:user]}@#{options[:host]} mkdir -p #{options[:root_dir]}"
+    if not run_cmd(cmd).first.success?
+      @logger.error("can't create remote directory")
+      return false
+    end
+    
+    source = Array(source).join(' ')
+    cmd = "scp -r -C #{source} #{options[:user]}@#{options[:host]}:#{target}"
+    result = run_cmd(cmd)
+    if result.first.success?
+      @logger.info("files were sucessfully uploaded")
+    else
+      @logger.error("failed to upload files")
+    end
+    return result.first.success?
+  end
 end
