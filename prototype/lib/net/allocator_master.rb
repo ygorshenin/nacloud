@@ -21,13 +21,14 @@ class AllocatorMaster
       :slave_runner => File.join('allocator', 'slave_runner.rb'),
       :slave_reruns => 10,
     }.merge(options)
+    @options[:root_dir] = File.expand_path(@options[:root_dir])
     @logger = Logger.new(@options[:logfile] || STDERR)
   end
 
   # Uploads all system library files to slave's root directory.
   # slave is a Hash with all necessary info (:host, :port, :user, :root_dir).
   def upload_system_files(slave)
-    source = File.join(File.expand_path(@options[:root_dir]), '*')
+    source = File.join(@options[:root_dir], '*')
     target = slave[:root_dir]
     
     upload_files(source, target, slave)
@@ -48,33 +49,8 @@ class AllocatorMaster
     run_cmd_times([head, tail, args].join(' '), reruns)
   end
 
-  def run_binary(user_id, options)
-    if not options.has_key?(:binary)
-      @logger.error("for user '#{user}' binary is not specified")
-      return false
-    end
-    source = Array(options[:data] || []).push(options[:binary])
-    slave = @slaves[@router[user]]
-    target = File.join(slave[:root_dir],  slave[:home_dir], user_id)
-    upload_files(source, target, slave)
+  def run_binary(user_id, package, options)
+    @logger.info("getting package")
     return true
   end
 end
-
-slave = {
-  :id => 'ygorshenin',
-  :host => '172.28.51.174',
-  :user => 'ygorshenin',
-  :root_dir => 'nslave',
-  :home_dir => 'nhome',
-  :port => 8080,
-  :reruns => 2,
-}
-
-slaves = [ slave ]
-router = { :alpha => 'ygorshenin' }
-
-master = AllocatorMaster.new(slaves, router)
-
-master.upload_system_files(slave)
-master.remote_run_slave(slave)
