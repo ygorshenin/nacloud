@@ -1,0 +1,85 @@
+# Author: Yuri Gorshenin
+
+require 'fileutils'
+require 'lib/ext/core_ext'
+
+# Simple packet manager class.
+# Can only build packages and install them.
+# Packages now are .tar.gz files.
+# Config is a Hash, contains job specification and used packages.
+# For instance:
+# job:
+#  binary: ~/coding/hungarian
+#  args:
+#    input_file: data/input.dat
+#    output_file: data/output.dat
+#    config_file: other/config.yaml
+#
+#  packages: [ input_data, configuration ]
+# 
+# input_data:
+#   files: [ ~/downloads/input.txt ]
+#   dest: data
+#
+# configuration:
+#   file: ~/my/config.yaml
+#   dest: other
+class SPM
+  # Build spm file simply by copying binaries, specified in config file, tar-ing and gzip-ing them.
+  def self.build(config, name, options = {})
+    check_config(config.symbolize_keys_recursive!)
+
+    FileUtils.mkdir_p(name, options)
+    FileUtils.cp(config[:job][:binary], name, options)
+
+    config[:job][:packages].each do |package|
+      target = File.join(name, config[package][:dest])
+      FileUtils.mkdir_p(target, options)
+      config[package][:files].each { |file| FileUtils.cp(file, target, options) }
+    end
+    result = `tar -cf #{name}.tar #{name}; gzip #{name}.tar;`
+    raise RuntimeError(result) unless $?.success?
+    FileUtils.rm_rf(name)
+    FileUtils.mv(name + ".tar.gz", name)
+  end
+
+  def self.install(options)
+    
+  end
+
+  private
+
+  # Checks config[package] section.
+  # Convers to array (creates empty, if need) :files subsection, deletes :file subsection.
+  # Creates (if need) :dest subsection with default value '.'.
+  # Raises argument error, if fails.
+  def self.check_package(config, package)
+    raise ArgumentError.new("package #{package} is specified but not described") unless config[package]
+    config[package][:files] = Array(config[package][:files] || [])
+    config[package][:files].push(config[package].delete(:file)) if config[package][:file]
+    config[package][:dest] = '.' unless config[package][:dest]
+
+    config[package][:files].map! { |file| File.expand_path(file) }
+  end
+
+  # Checks config[:job][:packages] section.
+  # Converts to array (creates empty, if need), checks all needed packages.
+  # Raises argument error, if fails.
+  def self.check_packages(config)
+    config[:job][:packages] = Array(config[:job][:packages] || [])
+    config[:job][:packages].map! { |package| package.to_sym }.each do |package|
+      check_package(config, package)
+    end
+  end
+
+  # Checks configuration file.
+  # Also makes small changes (transforms package section to array,
+  # replaces file section to files in package specification).
+  # Raises argument error, if fails.
+  def self.check_config(config)
+    raise ArgumentError.new("job section must be specified") unless config[:job]
+    raise ArgumentError.new("binary file must be specified") unless config[:job][:binary]
+    config[:job][:binary] = File.expand_path(config[:job][:binary])
+    check_packages(config)
+  end
+end
