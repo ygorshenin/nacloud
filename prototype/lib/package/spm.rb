@@ -27,7 +27,7 @@ require 'lib/ext/core_ext'
 class SPM
   # Build spm file simply by copying binaries, specified in config file, tar-ing and gzip-ing them.
   def self.build(config, name, options = {})
-    check_config(config.symbolize_keys_recursive!)
+    check_config(config)
     
     tmp_dir = get_tmp_dir
 

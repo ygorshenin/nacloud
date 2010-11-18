@@ -2,6 +2,7 @@
 
 # Author: Yuri Gorshenin
 
+require 'lib/options'
 require 'lib/package/spm'
 require 'optparse'
 require 'yaml'
@@ -27,10 +28,8 @@ options = parse_options(ARGV)
 
 case options[:action]
 when :build
-  config = YAML::load(File.open(File.expand_path(options[:config]), 'r'))
+  config = get_options_from_file(File.expand_path(options[:config]))
   SPM::build(config, options[:name], :verbose => options[:verbose])
-  
 when :install
   SPM::install(options[:name], options[:dst], :verbose => options[:verbose])
-  
 end
