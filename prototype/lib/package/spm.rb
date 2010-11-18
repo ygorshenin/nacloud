@@ -33,7 +33,7 @@ class SPM
 
     begin
       FileUtils.mkdir(tmp_dir, options)
-      FileUtils.cp(config[:job][:binary], tmp_dir, options)
+      FileUtils.cp(config[:job][:binary], tmp_dir, options) if config[:job][:binary]
 
       config[:job][:packages].each do |package|
         target = File.join(tmp_dir, config[package][:dest])
@@ -94,8 +94,7 @@ class SPM
   # Raises argument error, if fails.
   def self.check_config(config)
     raise ArgumentError.new("job section must be specified") unless config[:job]
-    raise ArgumentError.new("binary file must be specified") unless config[:job][:binary]
-    config[:job][:binary] = File.expand_path(config[:job][:binary])
+    config[:job][:binary] = File.expand_path(config[:job][:binary]) if config[:job][:binary]
     check_packages(config)
   end
 end
