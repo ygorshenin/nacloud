@@ -40,16 +40,23 @@ class SPM
         FileUtils.mkdir_p(target, options)
         config[package][:files].each { |file| FileUtils.cp(file, target, options) }
       end
-      result = `cd #{tmp_dir}; tar -cf #{File.basename(name)}.tar * --remove-files; gzip #{File.basename(name)}.tar`
-      raise RuntimeError(result) unless $?.success?
-      FileUtils.mv(File.join(tmp_dir, File.basename(name) + '.tar.gz'), File.expand_path(name))
+      
+      archive = File.basename(name) + '.tar.gz'
+      result = `cd #{tmp_dir}; tar -czf #{archive} * --remove-files`
+      raise RuntimeError.new(result) unless $?.success?
+      FileUtils.mv(File.join(tmp_dir, archive), File.expand_path(name), options)
     ensure
       FileUtils.rm_rf(tmp_dir)
     end
   end
 
-  def self.install(options)
-    
+  # src is the path to package file
+  # dst is the directory, where to put compressed files
+  def self.install(src, dst, options)
+    archive = File.basename(src) + '.tar.gz'
+    FileUtils.cp(File.expand_path(src), File.expand_path(File.join(dst, archive)), options)
+    result = `cd #{dst}; tar -xzf #{archive}; rm #{archive}`
+    raise RuntimeError(result) unless $?.success?
   end
 
   private
