@@ -27,6 +27,19 @@ class AllocatorSlave
     create_directory(@options[:home_dir])
   end
 
+  # Start allocator slave DRb service
+  def start(uri)
+    @logger.info("running service #{uri}")
+    DRb.start_service uri, self
+    DRb.thread.join
+  end
+
+  # Stop allocator slave DRb service
+  def stop
+    @logger.info("stopping service")
+    DRb.stop_service
+  end
+
   def install_package(source, user_id, options = {})
     destination = File.join(@options[:home_dir], user_id)
     result = `ruby lib/package/spmutil.rb -i --package_file=#{source} --destination=#{destination}`
