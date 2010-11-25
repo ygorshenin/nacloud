@@ -62,4 +62,11 @@ def upload_job(options)
   end
 end
 
-upload_job(parse_options(ARGV))
+begin
+  upload_job(parse_options(ARGV))
+rescue Exception => e
+  STDERR.puts e.message
+  exit -1
+end
+
+  
