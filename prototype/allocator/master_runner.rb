@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
 # Author: Yuri Gorshenin
 
+require 'lib/ext/core_ext'
 require 'lib/net/allocator_master'
 require 'lib/options'
 require 'optparse'
@@ -32,13 +33,17 @@ end
 options = parse_options(ARGV)
 config = get_options_from_file(File.expand_path(options.delete(:config)))
 
-puts options.inspect
-puts config.inspect
+config[:slaves] ||= []
+config[:slaves].each { |slave| slave.symbolize_keys_recursive! }
+config[:router] ||= []
+router = config[:router]
+router.each_key do |key|
+  value = router.delete(key)
+  router[key.to_s] = value
+end
 
-exit 0
+master = AllocatorMaster.new(config[:slaves], config[:router], options)
+master.run_slaves
 
-master = Allocator_Master.new(config[:slaves], config[:router], options)
-
-DRb.start_service master, "druby://#{`hostname`}:#{options[:port]}"
-STDERR.puts "server started on #{DRb.uri}"
+DRb.start_service "druby://#{options[:host]}:#{options[:port]}", master
 DRb.thread.join

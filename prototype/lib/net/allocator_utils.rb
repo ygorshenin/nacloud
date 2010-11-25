@@ -38,6 +38,7 @@ module AllocatorUtils
   end
 
   # Uploads files to remote server
+  # Returns false if fails
   def upload_files(source, target, options = {})
     cmd = "ssh #{options[:user]}@#{options[:host]} mkdir -p #{options[:root_dir]}"
     if not run_cmd(cmd).first.success?

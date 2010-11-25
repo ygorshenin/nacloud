@@ -42,9 +42,9 @@ class SPM
       end
       
       archive = File.basename(name) + '.tar.gz'
-      result = `cd #{tmp_dir}; tar -czf #{archive} * --remove-files`
+      result = `cd #{tmp_dir}; tar -czf #{File.join("..", archive)} *;rm -rf *`
       raise RuntimeError.new(result) unless $?.success?
-      FileUtils.mv(File.join(tmp_dir, archive), File.expand_path(name), options)
+      FileUtils.mv(File.join(tmp_dir, "..", archive), File.expand_path(name), options)
     ensure
       FileUtils.rm_rf(tmp_dir)
     end

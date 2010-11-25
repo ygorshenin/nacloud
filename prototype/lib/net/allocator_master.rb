@@ -31,17 +31,32 @@ class AllocatorMaster
 
   # Run all slaves
   def run_slaves
-    @slaves.each do |slave|
+    @slaves.each_value do |slave|
       Thread.new do
-        upload_system_files(slave)
+        raise RuntimeError.new("can't upload system files") unless upload_system_files(slave)
         remote_run_slave(slave)
       end
     end
   end
 
   def run_binary(user_id, package, options)
-    @logger.info("getting package")
-    return true
+    slave = @slaves[@router[user_id]]
+    if not @router[user_id] or not @slaves[@router[user_id]]
+      @logger.info "can't route for #{user_id}"
+      return false
+    end
+    uri = "druby://#{slave[:host]}:#{slave[:port]}"
+    @logger.info("slave: #{slave.inspect}")
+    @logger.info("uri: #{uri}")
+
+    begin
+      slave = DRbObject.new nil, uri
+      slave.run_binary(user_id, package, options)
+      return true
+    rescue Exception => e
+      @logger.info e
+      return false
+    end
   end
 
   private
@@ -49,15 +64,15 @@ class AllocatorMaster
   # Uploads all system library files to slave's root directory.
   # slave is a Hash with all necessary info (:host, :port, :user, :root_dir).
   def upload_system_files(slave)
-    source = File.join(@options[:root_dir], '*')
+    source = File.join(@options[:root_dir], "*")
     target = slave[:root_dir]
-    
+    @logger.info "#{source} => #{target}"
     upload_files(source, target, slave)
   end
 
   # Runs slave remotely.
   def remote_run_slave(slave)
-    reruns = slave[:reruns] || @options[:slave_reruns]
+    reruns = (slave[:reruns] || @options[:slave_reruns]).to_i
     
     head = "ssh #{slave[:user]}@#{slave[:host]}"
     tail = "ruby -I #{slave[:root_dir]} #{File.join(slave[:root_dir], @options[:slave_runner])}"
@@ -68,5 +83,7 @@ class AllocatorMaster
     end
     
     run_cmd_times([head, tail, args].join(' '), reruns)
+
+    @logger.info "slave #{slave[:id]} down"
   end
 end
