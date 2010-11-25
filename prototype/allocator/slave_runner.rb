@@ -23,7 +23,5 @@ end
 
 options = parse_options(ARGV)
 slave = AllocatorSlave.new(options)
-uri = "druby://localhost:#{options[:port]}"
-DRb.start_service(uri, slave)
-STDERR.puts "slave started on #{uri}, PID: #{Process.pid}"
-DRb.thread.join
+uri = "druby://#{`hostname`.strip}:#{options[:port]}"
+slave.start(uri)
