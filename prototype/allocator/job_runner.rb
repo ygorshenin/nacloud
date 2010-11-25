@@ -21,14 +21,14 @@ def parse_options(argv)
   
   parser.parse(*argv)
 
-  [ :host, :port, :config, :user ].each do |option|
+  [ :host, :port, :config, :user_id ].each do |option|
     raise ArgumentError.new("option '#{option}' must be specified") unless options[option]
   end
   options
 end
 
 def get_tmp_name
-  "tmp.#{Time.now.to_i}.#{Process.pid}"
+  "tmp_#{Time.now.to_i}_#{Process.pid}"
 end
 
 def upload_job(options)
@@ -53,8 +53,8 @@ def upload_job(options)
       server = DRbObject.new nil, uri
       done = server.run_binary(options[:user_id], package, config[:job])
       STDERR.puts(done ? "ok" : "fails")
-    rescue
-      STDERR.puts "fails"
+    rescue Exception => e
+      STDERR.puts e.message
       done = false
     end
     break if done
