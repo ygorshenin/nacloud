@@ -21,7 +21,7 @@ module AllocatorUtils
         result = run_cmd(cmd)
         return true if result.first.success?
       rescue Exception => e
-        @logger.error "can't execute '#{cmd}', cause: #{e.message}" if defined? @logger
+        @logger.error "can't execute '#{cmd}', cause: #{e}" if defined? @logger
       end
     end
     false
@@ -42,18 +42,11 @@ module AllocatorUtils
   def upload_files(source, target, options = {})
     cmd = "ssh #{options[:user]}@#{options[:host]} mkdir -p #{options[:root_dir]}"
     if not run_cmd(cmd).first.success?
-      @logger.error("can't create remote directory")
       return false
     end
     
     source = Array(source).join(' ')
     cmd = "scp -r -C #{source} #{options[:user]}@#{options[:host]}:#{target}"
-    result = run_cmd(cmd)
-    if result.first.success?
-      @logger.info("files were sucessfully uploaded")
-    else
-      @logger.error("failed to upload files")
-    end
-    return result.first.success?
+    run_cmd(cmd).first.success?
   end
 end
