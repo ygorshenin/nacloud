@@ -21,7 +21,12 @@ def parse_options(argv)
   options
 end
 
-options = parse_options(ARGV)
-slave = AllocatorSlave.new(options)
-uri = "druby://#{`hostname`.strip}:#{options[:port]}"
-slave.start(uri)
+begin
+  options = parse_options(ARGV)
+  slave = AllocatorSlave.new(options)
+  uri = "druby://#{`hostname`.strip}:#{options[:port]}"
+  slave.start(uri)
+rescue Exception => e
+  STDERR.puts e.message
+  exit -1
+end
