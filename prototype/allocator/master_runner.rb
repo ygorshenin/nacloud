@@ -58,21 +58,15 @@ router.each_key do |key|
   router[key.to_s] = value
 end
 
-uri = "druby://#{options[:host]}:#{options[:port]}"
-
 begin
-  DRb.start_service
-  if options[:action] == :start # We must start new service
-    master = AllocatorMaster.new(config[:slaves], config[:router], options)
-  else # We must connect to existing service
-    master = DRbObject.new_with_uri(uri)
-  end
-
+  master = AllocatorMaster.new(config[:slaves], config[:router], options)
+  
   case options[:action]
   when :deploy
     master.deploy
   when :start
-    master.start(uri)
+    trap ("INT") { master.stop }
+    master.start("druby://#{options[:host]}:#{options[:port]}")
   when :stop
     master.stop
   end

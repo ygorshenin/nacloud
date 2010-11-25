@@ -41,6 +41,7 @@ class AllocatorMaster
   # Start DRb service
   def start(uri)
     @slaves_ssh_thread = Thread.new { run_slaves }
+    @state = :alive
     DRb.start_service uri, self
     DRb.thread.join
   end
@@ -55,6 +56,7 @@ class AllocatorMaster
 
   # Stops all slaves and stops drb service
   def stop
+    @state = :dead
     each_slave do |slave|
       msg = remote_stop_slave(slave) ? "#{slave[:id]} was succesfully stopped" : "failed to stop #{slave[:id]}"
       Thread.current[:status] = msg
@@ -66,6 +68,7 @@ class AllocatorMaster
       rescue Exception => e
         @logger.error(e)
         @logger.info("can't stop ssh connections gracefully")
+        @slaves_ssh_thread.kill
       end
     end
     DRb.stop_service
@@ -73,11 +76,7 @@ class AllocatorMaster
 
   # Run all slaves
   def run_slaves
-    @slaves.each_value do |slave|
-      Thread.new do
-        remote_run_slave(slave)
-      end
-    end
+    each_slave { |slave| remote_run_slave(slave) }
   end
 
   # Run binary from user_id on slave, which is assigned to this user
