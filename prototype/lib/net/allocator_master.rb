@@ -34,7 +34,7 @@ class AllocatorMaster
 
   # Start DRb service
   def start(uri)
-    @logger.info "starting service"
+    @logger.info "running service #{uri}"
     DRb.start_service uri, self
     DRb.thread.join
   end

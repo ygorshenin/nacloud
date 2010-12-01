@@ -10,10 +10,9 @@ def parse_options(argv)
   parser, options = OptionParser.new, AllocatorMaster::DEFAULT_OPTIONS
   
   parser.on("--logfile=FILE", String) { |logfile| options[:logfile] = logfile }
-  parser.on("--config=FILE", "configuration file, that contains",
+  parser.on("-c", "--config=FILE", "configuration file, that contains",
             "slaves description and routing table", String) { |config| options[:config] = config }
-  parser.on("-h", "--host=HOST", "local hostname",
-            "default=#{options[:host]}", String) { |host| options[:host] = host }
+  parser.on("-h", "--host=HOST", "default=#{options[:host]}") { |host| options[:host] = host }
   parser.on("-p", "--port=PORT", "port on which server will run", Integer) { |port| options[:port] = port }
   
   parser.parse(*argv)

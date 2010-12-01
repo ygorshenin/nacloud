@@ -11,9 +11,9 @@ def parse_options(argv)
     :home_dir => 'home',
   }
   parser = OptionParser.new
-  parser.on("--port=PORT", "default value: #{options[:port]}", Integer) { |port| options[:port] = port }
-  parser.on("--root_dir=DIR", "default value: #{options[:root_dir]}", String) { |root_dir| options[:root_dir] = root_dir }
-  parser.on("--home_dir=DIR", "default value: #{options[:home_dir]}", String) { |home_dir| options[:home_dir] = home_dir }
+  parser.on("-p", "--port=PORT", "default value: #{options[:port]}", Integer) { |port| options[:port] = port }
+  parser.on("-r", "--root_dir=DIR", "default value: #{options[:root_dir]}", String) { |root_dir| options[:root_dir] = root_dir }
+  parser.on("-h", "--home_dir=DIR", "default value: #{options[:home_dir]}", String) { |home_dir| options[:home_dir] = home_dir }
   parser.on("--logfile=FILE", String) { |logfile| options[:logfile] = logfile }
 
   parser.parse(*argv)
