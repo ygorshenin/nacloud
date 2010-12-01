@@ -1,6 +1,7 @@
 # Author: Yuri Gorshenin
 
 require 'drb'
+require 'lib/ext/core_ext'
 require 'lib/net/allocator_utils'
 require 'logger'
 
@@ -10,13 +11,19 @@ class AllocatorSlave
   include AllocatorUtils
   include DRbUndumped
 
-  OPTIONS = [ :port, :root_dir, :home_dir, :logfile ]
+  OPTIONS = [ :id, :host, :port, :root_dir, :home_dir, :server_host, :server_port, :update_timeout ]
+
+  DEFAULT_OPTIONS = {
+    :host => `hostname`.strip,
+    :root_dir => '.',
+    :home_dir => 'home',
+    :update_timeout => 1.seconds,
+  }
+
+  REQUIRED_OPTIONS = OPTIONS.select { |k| not DEFAULT_OPTIONS.has_key?(k) }
   
   def initialize(options = {})
-    @options = {
-      :root_dir => 'slave',
-      :home_dir => 'home',
-    }.merge(options)
+    @options = DEFAULT_OPTIONS.merge(options)
 
     @options[:root_dir] = File.expand_path(@options[:root_dir])
 
@@ -31,7 +38,23 @@ class AllocatorSlave
   def start(uri)
     @logger.info("running service #{uri}")
     DRb.start_service uri, self
+    Thread.new { update_server_data }
     DRb.thread.join
+  end
+
+  def update_server_data
+    uri = "druby://#{@options[:server_host]}:#{@options[:server_port]}"
+    slave = { :id => @options[:id], :host => @options[:host], :port => @options[:port] }
+    loop do
+      begin
+        server = DRbObject.new_with_uri(uri)
+        server.update_slave(slave)
+      rescue Exception => e
+        @logger.info("can't update server")
+      ensure
+        sleep @options[:update_timeout]
+      end
+    end
   end
 
   # Stop allocator slave DRb service

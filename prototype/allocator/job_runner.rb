@@ -10,13 +10,13 @@ require 'optparse'
 def parse_options(argv)
   parser, options = OptionParser.new, { :timeout => 3.seconds, :reruns => 3}
 
-  parser.on("-h", "--host=HOST", String) { |host| options[:host] = host }
-  parser.on("-p", "--port=PORT", Integer) { |port| options[:port] = port }
-  parser.on("-c", "--config=FILE", "job configuration file", String) { |config| options[:config] = config }
-  parser.on("-u", "--user=USER", "user ID, which used in job package routing", String) { |user| options[:user_id] = user }
-  parser.on("-t", "--timeout=SEC", "timeout in seconds, between consecutive connection tries",
+  parser.on("--host=HOST", String) { |host| options[:host] = host }
+  parser.on("--port=PORT", Integer) { |port| options[:port] = port }
+  parser.on("--config=FILE", "job configuration file", String) { |config| options[:config] = config }
+  parser.on("--user=USER", "user ID, which used in job package routing", String) { |user| options[:user_id] = user }
+  parser.on("--timeout=SEC", "timeout in seconds, between consecutive connection tries",
             "default=#{options[:timeout]}", Float) { |timeout| options[:timeout] = timeout }
-  parser.on("-r", "--reruns=TIMES", "how many times try to connect to server",
+  parser.on("--reruns=TIMES", "how many times try to connect to server",
             "default=#{options[:reruns]}", Integer) { |reruns| options[:reruns] = reruns }
   
   parser.parse(*argv)
