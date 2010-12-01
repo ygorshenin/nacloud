@@ -17,7 +17,6 @@ module AllocatorUtils
   # Returns true if success.
   def run_cmd_times(cmd, reruns)
     reruns.times do
-      break if defined? @state and @state == :dead
       begin
         result = run_cmd(cmd)
         return true if result.first.success?

@@ -6,11 +6,8 @@ require 'lib/net/allocator_master'
 require 'lib/options'
 require 'optparse'
 
-ACTIONS = [:deploy, :start, :stop]
-
 def parse_options(argv)
   parser, options = OptionParser.new, AllocatorMaster::DEFAULT_OPTIONS
-  options[:action] = :start
   
   parser.on("--logfile=FILE", String) { |logfile| options[:logfile] = logfile }
   parser.on("--config=FILE", "configuration file, that contains",
@@ -18,18 +15,6 @@ def parse_options(argv)
   parser.on("-h", "--host=HOST", "local hostname",
             "default=#{options[:host]}", String) { |host| options[:host] = host }
   parser.on("-p", "--port=PORT", "port on which server will run", Integer) { |port| options[:port] = port }
-  
-  parser.on("--root_dir=DIR", "server root directory",
-            "default=#{options[:root_dir]}", String) { |root_dir| options[:root_dir] = root_dir }
-  
-  parser.on("--slave_runner=RUNNER", "relative path to slave runner script",
-            "default=#{options[:slave_runner]}", String) { |slave_runner| options[:slave_runner] = slave_runner }
-  
-  parser.on("--slave_reruns=TIMES", "how many times rerun slaves",
-            "default=#{options[:slave_reruns]}", Integer) { |slave_reruns| options[:slave_reruns] = slave_reruns }
-
-  parser.on("--action=ACTION", ACTIONS, "available actions: #{ACTIONS.join(',')}",
-            "default=start") { |action| options[:action] = action }
   
   parser.parse(*argv)
   raise ArgumentError.new("config file must be specified") unless options[:config]
@@ -61,15 +46,8 @@ end
 begin
   master = AllocatorMaster.new(config[:slaves], config[:router], options)
   
-  case options[:action]
-  when :deploy
-    master.deploy
-  when :start
-    trap ("INT") { master.stop }
-    master.start("druby://#{options[:host]}:#{options[:port]}")
-  when :stop
-    master.stop
-  end
+  trap ("INT") { master.stop }
+  master.start("druby://#{options[:host]}:#{options[:port]}")
 rescue Exception => e
   STDERR.puts e.message
   exit -1

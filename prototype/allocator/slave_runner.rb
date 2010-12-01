@@ -25,6 +25,7 @@ begin
   options = parse_options(ARGV)
   slave = AllocatorSlave.new(options)
   uri = "druby://#{`hostname`.strip}:#{options[:port]}"
+  trap ("INT") { slave.stop }
   slave.start(uri)
 rescue Exception => e
   STDERR.puts e.message
