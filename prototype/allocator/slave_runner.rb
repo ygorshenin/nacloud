@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
 # Author: Yuri Gorshenin
 
+require 'lib/options'
 require 'lib/net/allocator_slave'
 require 'optparse'
 
@@ -8,15 +9,15 @@ def parse_options(argv)
   options = AllocatorSlave::DEFAULT_OPTIONS
   
   parser = OptionParser.new
-  parser.on("--id=ID", String) { |id| options[:id] = id }
-  parser.on("--host=HOST", "default=#{options[:host]}", String) { |host| options[:host] = host }
-  parser.on("--port=PORT", Integer) { |port| options[:port] = port }
-  parser.on("--root_dir=DIR", "default=#{options[:root_dir]}", String) { |root_dir| options[:root_dir] = root_dir }
-  parser.on("--home_dir=DIR", "default=#{options[:home_dir]}", String) { |home_dir| options[:home_dir] = home_dir }
-  parser.on("--server_host=HOST", String) { |server_host| options[:server_host] = server_host }
-  parser.on("--server_port=PORT", String) { |server_port| options[:server_port] = server_port }
-  parser.on("--update_timeout=TIME", "default=#{options[:update_timeout]}", Integer) { |update_timeout| options[:update_timeout] = update_timeout }
-  parser.on("--logfile=FILE", String) { |logfile| options[:logfile] = logfile }
+  parser.on("--home_dir=DIR", "name of tasks home directory,", "where all VMDirs will be created", "default=#{options[:home_dir]}", String) { |home_dir| options[:home_dir] = home_dir }
+  parser.on("--host=HOST", "host, on which slave must be runned", "default=#{options[:host]}", String) { |host| options[:host] = host }
+  parser.on("--id=ID", "id of slave, must be unique", String) { |id| options[:id] = id }
+  parser.on("--logfile=FILE", "name of logfile", String) { |logfile| options[:logfile] = logfile }
+  parser.on("--port=PORT", "port, on which slave will be available", "by master", Integer) { |port| options[:port] = port }
+  parser.on("--register_timeout=TIME", "timeout between consecutive", "connection times", "default=#{options[:register_timeout]}", Integer) { |register_timeout| options[:register_timeout] = register_timeout }
+  parser.on("--root_dir=DIR", "path to directory with library files", "default=#{options[:root_dir]}", String) { |root_dir| options[:root_dir] = root_dir }
+  parser.on("--server_host=HOST", "where is server?", String) { |server_host| options[:server_host] = server_host }
+  parser.on("--server_port=PORT", "on which port?", String) { |server_port| options[:server_port] = server_port }
 
   parser.parse(*argv)
 
@@ -30,9 +31,12 @@ begin
   options = parse_options(ARGV)
   slave = AllocatorSlave.new(options)
   uri = "druby://#{`hostname`.strip}:#{options[:port]}"
-  trap ("INT") { slave.stop }
+  trap ('INT') { slave.stop }
   slave.start(uri)
-rescue Exception => e
+rescue ArgumentError => e
   STDERR.puts e.message
+  exit -1
+rescue Exception => e
+  STDERR.puts e
   exit -1
 end

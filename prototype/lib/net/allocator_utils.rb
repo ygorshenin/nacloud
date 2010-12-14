@@ -1,52 +1,40 @@
 # Author: Yuri Gorshenin
 
-# Module contains several common useful methods
-module AllocatorUtils
-  private
+require 'fileutils'
+
+# Class contains several common useful methods
+class AllocatorUtils
   # Execute cmd in current thread.
   # Returns Process::Status or throws SystemCallError.
-  def run_cmd(cmd)
-    @logger.info("running command: #{cmd}") if defined? @logger
+  def self.run_cmd(cmd)
     result = `#{cmd}`
-    exit_code = $?
-    @logger.info("result of '#{cmd}': #{result.strip}, exit code: #{exit_code}") if defined? @logger
-    [exit_code, result]
+    $?
   end
   
   # Tries to run cmd at most reruns times.
-  # Returns true if success.
-  def run_cmd_times(cmd, reruns)
+  # Returns [success boolean flag, message]
+  def self.run_cmd_times(cmd, reruns)
+    ok, os = false, StringIO.new
     reruns.times do
       begin
-        result = run_cmd(cmd)
-        return true if result.first.success?
+        if run_cmd(cmd).success?
+          ok = true
+          break
+        end
       rescue Exception => e
-        @logger.error "can't execute '#{cmd}', cause: #{e}" if defined? @logger
+        os.puts e.message
       end
     end
-    false
-  end
-  
-  # Creating subdirectory in current directory, if not exists yet.
-  # Raises Exception if fails.
-  def create_directory(name)
-    begin
-      Dir.mkdir(name)
-    rescue Errno::EEXIST
-      raise if not File.directory?(name)
-    end
+    [ok, os.string]
   end
 
-  # Uploads files to remote server
-  # Returns false if fails
-  def upload_files(source, target, options = {})
-    cmd = "ssh #{options[:user]}@#{options[:host]} mkdir -p #{options[:root_dir]}"
-    if not run_cmd(cmd).first.success?
-      return false
-    end
-    
-    source = Array(source).join(' ')
-    cmd = "scp -r -C #{source} #{options[:user]}@#{options[:host]}:#{target}"
-    run_cmd(cmd).first.success?
+  # Options must have :user, :job and :replica keys
+  def self.get_task_key(options)
+    options[:user] + '.' + options[:job] + '.' + options[:replica].to_s
+  end
+
+  # Options must have :host and :port keys
+  def self.get_uri(options)
+    "druby://#{options[:host]}:#{options[:port]}"
   end
 end

@@ -1,72 +1,96 @@
 #!/usr/bin/ruby
+# Author: Yuri Gorshenin
 
+# Uploads and starts job to server
+# config file must have following format:
+# 
+# jobs:
+#   - job: "first_job"
+#     command: "echo 'hello' > hello.txt"
+#     replicas: 10
+#
+#     options:
+#       different_nodes: true
+#   - job: "second_job"
+#     binary: "/home/ygorhsenin/Coding/Area51/main"
+#
 require 'drb'
 require 'fileutils'
 require 'lib/ext/core_ext'
+require 'lib/net/database_system'
 require 'lib/options'
 require 'lib/package/spm'
 require 'optparse'
 
-def parse_options(argv)
-  parser, options = OptionParser.new, { :timeout => 3.seconds, :reruns => 3}
+ACTIONS = [:up, :down]
 
-  parser.on("--host=HOST", String) { |host| options[:host] = host }
-  parser.on("--port=PORT", Integer) { |port| options[:port] = port }
+def parse_options(argv)
+  parser, options = OptionParser.new, { :action => :up }
+
+  parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on("--config=FILE", "job configuration file", String) { |config| options[:config] = config }
-  parser.on("--user=USER", "user ID, which used in job package routing", String) { |user| options[:user_id] = user }
-  parser.on("--timeout=SEC", "timeout in seconds, between consecutive connection tries",
-            "default=#{options[:timeout]}", Float) { |timeout| options[:timeout] = timeout }
-  parser.on("--reruns=TIMES", "how many times try to connect to server",
-            "default=#{options[:reruns]}", Integer) { |reruns| options[:reruns] = reruns }
+  parser.on("--host=HOST", "server host", String) { |host| options[:host] = host }
+  parser.on("--port=PORT", "server port", Integer) { |port| options[:port] = port }
+  parser.on("--user=USER", "user ID", String) { |user| options[:user] = user }
   
   parser.parse(*argv)
 
-  [ :host, :port, :config, :user_id ].each do |option|
+  [:config, :host, :port, :user].each do |option|
     raise ArgumentError.new("option '#{option}' must be specified") unless options[option]
   end
   options
 end
 
-def get_tmp_name
-  "tmp_#{Time.now.to_i}_#{Process.pid}"
-end
+def upload_job(server, db_client, packages, job_options)
+  db_client.insert_job(job_options)
 
-def upload_job(options)
-  config = get_options_from_file(File.expand_path(options[:config]))
-  name = get_tmp_name
-  uri = "druby://#{options[:host]}:#{options[:port]}"
-
-  STDERR.puts "creating package from job..."
-  SPM::build(config, name)
+  if job_options.has_key?(:binary)
+    File.open(job_options[:binary], 'r') { |file| db_client.insert_binary(file.read, job_options) }
+  end
   
-  package = ''
-  STDERR.puts "loading package into memory..."
-  File.open(name, 'r') { |file| package = file.read }
-  
-  STDERR.puts "removing package file..."
-  FileUtils.rm(name)
-
-  done = false
-  options[:reruns].times do |effort|
-    begin
-      STDERR.puts "tries to connect to server..."
-      server = DRbObject.new nil, uri
-      done = server.run_binary(options[:user_id], package, config[:job])
-      STDERR.puts(done ? "ok" : "fails")
-    rescue Exception => e
-      STDERR.puts e.message
-      done = false
+  if job_options.has_key?(:packages)
+    job_options[:packages].each do |package_name|
+      SPM::build(packages[package_name])
+      File.open(package_name, 'r') { |file| db_client.insert_package(file.read, { :package_name => package_name }.merge(job_options)) }
+      FileUtils.rm(package_name)
     end
-    break if done
-    sleep options[:timeout]
   end
 end
 
 begin
-  upload_job(parse_options(ARGV))
+  options = parse_options(ARGV)
 rescue Exception => e
   STDERR.puts e.message
   exit -1
 end
 
-  
+config = get_options_from_file(options[:config])
+config[:jobs].map! { |job| { :user => options[:user] }.merge(job.symbolize_keys_recursive!) }
+
+packages = {}
+(config[:packages] || []).each do |package|
+  package.symbolize_keys_recursive!
+  package[:data] ||= []
+  package[:data].each { |h| h.symbolize_keys_recursive! }
+  packages[package[:name]] = package
+end
+
+DRb.start_service
+server = DRbObject.new_with_uri("druby://#{options[:host]}:#{options[:port]}")
+db_client = server.get_db_client
+
+begin
+  case options[:action]
+  when :up
+    config[:jobs].each do |job_options|
+      upload_job(server, db_client, packages, job_options)
+      server.add_job(job_options)
+    end
+  when :down
+    config[:jobs].each do |job_options|
+      server.kill_job(job_options)
+    end
+  end
+rescue Exception => e
+  STDERR.puts e.backtrace
+end
