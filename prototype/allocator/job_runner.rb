@@ -41,20 +41,29 @@ def parse_options(argv)
   options
 end
 
+# Returns true if success
 def upload_job(server, db_client, packages, job_options)
-  db_client.insert_job(job_options)
+  begin
+    return false if db_client.exists_job?(job_options)
+    
+    db_client.insert_job(job_options)
 
-  if job_options.has_key?(:binary)
-    File.open(job_options[:binary], 'r') { |file| db_client.insert_binary(file.read, job_options) }
-  end
-  
-  if job_options.has_key?(:packages)
-    job_options[:packages].each do |package_name|
-      SPM::build(packages[package_name])
-      File.open(package_name, 'r') { |file| db_client.insert_package(file.read, { :package_name => package_name }.merge(job_options)) }
-      FileUtils.rm(package_name)
+    if job_options.has_key?(:binary)
+      File.open(job_options[:binary], 'r') { |file| db_client.insert_binary(file.read, job_options) }
     end
-  end
+    
+    if job_options.has_key?(:packages)
+      job_options[:packages].each do |package_name|
+        SPM::build(packages[package_name])
+        File.open(package_name, 'r') { |file| db_client.insert_package(file.read, { :package_name => package_name }.merge(job_options)) }
+        FileUtils.rm(package_name)
+      end
+    end
+    return true
+  rescue Exception => e
+    STDERR.puts e
+    return false
+  end  
 end
 
 begin
@@ -83,12 +92,13 @@ begin
   case options[:action]
   when :up
     config[:jobs].each do |job_options|
-      upload_job(server, db_client, packages, job_options)
-      server.add_job(job_options)
+      done = upload_job(server, db_client, packages, job_options) and server.add_job(job_options)
+      puts "for job #{job_options[:job]}: " + (done ? "done" : "fail")
     end
   when :down
     config[:jobs].each do |job_options|
-      server.kill_job(job_options)
+      result = server.kill_job(job_options) ? "done" : "fail"
+      puts "for job #{job_options[:job]}: " + result
     end
   end
 rescue Exception => e

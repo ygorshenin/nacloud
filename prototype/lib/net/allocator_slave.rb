@@ -5,6 +5,7 @@ require 'lib/ext/core_ext'
 require 'lib/net/allocator_utils'
 require 'lib/package/spm'
 require 'logger'
+require 'pty'
 require 'thread'
 
 # Class represents single task.
@@ -20,19 +21,21 @@ class AllocatorTask
     elsif @options.has_key? :command
       @cmd += @options[:command]
     end
-    @pid = -1
   end
   
   def start
-    @pid = fork { exec @cmd }
+    @pid = fork do
+      begin
+        stdin, stdout, pid = PTY.spawn(@cmd)
+        sleep @options[:options][:job_timeout]
+      rescue PTY::ChildExited => e
+      end
+    end
   end
 
   def kill
-    if @pid != -1
-      Process::kill('TERM', @pid)
-      Process::wait(@pid)
-      @pid = -1
-    end
+    Process::kill('TERM', @pid)
+    Process::waitpid(@pid)
   end
 end
 

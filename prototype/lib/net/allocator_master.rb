@@ -15,12 +15,13 @@ require 'timeout'
 class AllocatorMaster
   include DRbUndumped
 
-  OPTIONS = [:host, :port, :db_host, :db_port, :allocator_timeout]
+  OPTIONS = [:host, :port, :db_host, :db_port, :allocator_timeout, :job_timeout]
 
   # Default server options. May be used in command-line utils as default values.
   DEFAULT_OPTIONS = {
     :host => `hostname`.strip,
     :allocator_timeout => 1.seconds, # How often checks available nodes
+    :job_timeout => 86400.seconds, # Job timeout
   }
 
   # Slaves is an Array of slaveses Hashes.
@@ -33,6 +34,7 @@ class AllocatorMaster
     # @job_to_slave is a Hash { :job_id => slave }
     @slaves, @job_to_slave = {}, {}, {}
     @logger = Logger.new(@options[:logfile] || STDERR)
+    # queue contains jobs description, mutex for slaves table mutual execution
     @queue, @mutex = Queue.new, Mutex.new
   end
 
@@ -62,22 +64,41 @@ class AllocatorMaster
   # Adds and starts new job
   # Options must have:
   # :user, :job, [:binary], [:command], :options { :reruns, :different_nodes }
+  # Returns true, if success.
   def add_job(options)
-    options = make_options_complete(options)
-    @queue.push(options) if options[:replicas] > 0
+    begin
+      options = make_options_complete(options)
+      @queue.push(options) if options[:replicas] > 0
+      return true
+    rescue Exception => e
+      @logger.error(e)
+      return false
+    end
   end
 
   # Stops and deletes job, removes all data from db
+  # Returns true, if success.
   def kill_job(options)
-    options = make_options_complete(options)
-    options[:replicas].times do |replica|
-      job_options = { :replica => replica }.merge(options)
-      task = AllocatorUtils::get_task_key(job_options)
-      next if not @job_to_slave.has_key?(task)
-      kill_job_on_slave(@job_to_slave[task], job_options)
-    end
+    begin
+      if not @db_client.exists_job?(options)
+        @logger.warn("can't delete job #{options[:user]}:#{options[:job]}")
+        return false
+      end
 
-    @db_client.delete_job(options)
+      options = make_options_complete(options)
+      options[:replicas].times do |replica|
+        job_options = { :replica => replica }.merge(options)
+        task = AllocatorUtils::get_task_key(job_options)
+        next if not @job_to_slave.has_key?(task)
+        kill_job_on_slave(@job_to_slave[task], job_options)
+      end
+
+      @db_client.delete_job(options)
+      return true
+    rescue Exception => e
+      @logger.error(e)
+      return false
+    end
   end
 
   def get_db_client
@@ -91,6 +112,7 @@ class AllocatorMaster
     options[:replicas] ||= 1
     options[:options] ||= {}
     options[:options][:reruns] ||= 1
+    options[:options][:job_timeout] = @options[:job_timeout]
     options[:options][:different_nodes] ||= false
     options[:binary] = File.basename(options[:binary]) if options.has_key? :binary
     
@@ -167,9 +189,9 @@ class AllocatorMaster
       object.add_task(options)
       object.start_task(options)
       @job_to_slave[task] = slave
-      @logger.info "task #{task} started on slave #{uri}"
+      @logger.info("task #{task} started on slave #{uri}")
     rescue Exception => e
-      @logger.error e
+      @logger.error(e)
     end
   end
 
@@ -182,9 +204,9 @@ class AllocatorMaster
       object.kill_task(options)
       object.del_task(options)
       @job_to_slave.delete(task)
-      @logger.info "task #{task} killed on slave #{uri}"
+      @logger.info("task #{task} killed on slave #{uri}")
     rescue Exception => e
-      @logger.error e
+      @logger.error(e)
     end
   end
 

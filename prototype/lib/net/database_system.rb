@@ -25,6 +25,12 @@ class DatabaseSystem
     @client = Cassandra.new(@options[:keyspace], @options[:host] + ':' + @options[:port].to_s)
   end
 
+  def exists_job?(options)
+    jobs = @client.get(@options[:cf_jobs], options[:user])
+    STDERR.puts jobs.inspect
+    return jobs.has_key?(options[:job])
+  end
+
   def insert_job(options)
     @client.insert(@options[:cf_jobs], options[:user], { options[:job] => options[:user] + ':' + options[:job] })
   end
