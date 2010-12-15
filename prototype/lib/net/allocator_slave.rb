@@ -25,17 +25,17 @@ class AllocatorTask
   
   def start
     @pid = fork do
-      begin
-        stdin, stdout, pid = PTY.spawn(@cmd)
-        sleep @options[:options][:job_timeout]
-      rescue PTY::ChildExited => e
-      end
+      Process::setsid
+      STDIN.reopen('/dev/null', 'r')
+      STDOUT.reopen('/dev/null', 'w')
+      STDERR.reopen('/dev/null', 'w')
+      exec @cmd
     end
+    Process::detach(@pid)
   end
 
   def kill
-    Process::kill('TERM', @pid)
-    Process::waitpid(@pid)
+    Process::kill('-TERM', @pid)
   end
 end
 
@@ -43,7 +43,7 @@ end
 class AllocatorSlave
   include DRbUndumped
 
-  OPTIONS = [ :id, :host, :port, :root_dir, :home_dir, :server_host, :server_port, :register_timeout ]
+  OPTIONS = [:id, :host, :port, :root_dir, :home_dir, :server_host, :server_port, :register_timeout]
 
   DEFAULT_OPTIONS = {
     :vmdir_job => 'job',
