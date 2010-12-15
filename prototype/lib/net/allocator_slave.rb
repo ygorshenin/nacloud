@@ -161,7 +161,8 @@ class AllocatorSlave
   def get_db_client
     uri = "druby://#{@options[:server_host]}:#{@options[:server_port]}"    
     server = DRbObject.new_with_uri(uri)
-    server.get_db_client
+    port = server.get_db_client_port
+    DRbObject.new_with_uri("druby://#{@options[:server_host]}:#{port}")
   end
   
   # Creates all needed directories

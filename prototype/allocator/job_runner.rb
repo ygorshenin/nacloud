@@ -24,6 +24,11 @@ require 'optparse'
 
 ACTIONS = [:up, :down]
 
+def get_db_client(server, host)
+  port = server.get_db_client_port
+  DRbObject.new_with_uri("druby://#{host}:#{port}")
+end
+
 def parse_options(argv)
   parser, options = OptionParser.new, { :action => :up }
 
@@ -88,7 +93,7 @@ end
 
 DRb.start_service
 server = DRbObject.new_with_uri("druby://#{options[:host]}:#{options[:port]}")
-db_client = server.get_db_client
+db_client = get_db_client(server, options[:host])
 
 begin
   case options[:action]
