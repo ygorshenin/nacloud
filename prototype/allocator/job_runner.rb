@@ -61,7 +61,8 @@ def upload_job(server, db_client, packages, job_options)
     end
     return true
   rescue Exception => e
-    STDERR.puts e
+    STDERR.puts e.message
+    STDERR.puts e.backtrace
     return false
   end  
 end
@@ -70,6 +71,7 @@ begin
   options = parse_options(ARGV)
 rescue Exception => e
   STDERR.puts e.message
+  STDERR.puts e.backtrace
   exit -1
 end
 
@@ -102,5 +104,6 @@ begin
     end
   end
 rescue Exception => e
+  STDERR.puts e.message
   STDERR.puts e.backtrace
 end

@@ -104,7 +104,7 @@ class AllocatorMaster
   end
 
   def get_db_client
-    DRbObject.new_with_uri("druby://#{@options[:host]}:#{@options[:db_client_port]}")
+    @db_client
   end
 
   private

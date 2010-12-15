@@ -25,9 +25,16 @@ class DatabaseSystem
     @client = Cassandra.new(@options[:keyspace], @options[:host] + ':' + @options[:port].to_s)
   end
 
+  def start(uri)
+    DRb.start_service uri, self
+  end
+
+  def stop
+    DRb.stop_service
+  end
+
   def exists_job?(options)
     jobs = @client.get(@options[:cf_jobs], options[:user])
-    STDERR.puts jobs.inspect
     return jobs.has_key?(options[:job])
   end
 

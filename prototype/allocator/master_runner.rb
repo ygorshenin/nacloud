@@ -17,6 +17,7 @@ def parse_options(argv)
   parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on("--db_host=HOST", "database host", String) { |db_host| options[:db_host] = db_host }
   parser.on("--db_port=PORT", "database port", Integer) { |db_port| options[:db_port] = db_port }
+  parser.on("--db_client_port=PORT", "database client port", Integer) { |db_client_port| options[:db_client_port] = db_client_port }
   parser.on("--host=HOST", "default=#{options[:host]}") { |host| options[:host] = host }
   parser.on("--logfile=FILE", String) { |logfile| options[:logfile] = logfile }
   parser.on("--port=PORT", "port on which server will run", Integer) { |port| options[:port] = port }
@@ -24,7 +25,7 @@ def parse_options(argv)
   parser.parse(*argv)
 
   required = [:port]
-  required += [:db_host, :db_port] if options[:action] == :start
+  required += [:db_host, :db_port, :db_client_port] if options[:action] == :start
   
   required.each do |option|
     raise ArgumentError.new("#{option} must be specified") unless options.has_key?(option)
