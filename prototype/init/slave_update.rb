@@ -9,6 +9,8 @@
 #
 # Script is designed to be runned without other parts of system.
 
+$:.unshift File.expand_path(File.dirname(__FILE__))
+
 require 'rubygems'
 require 'cassandra'
 require 'slave_core'

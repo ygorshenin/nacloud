@@ -1,5 +1,4 @@
 #!/usr/bin/ruby
-
 # Author: Yuri Gorshenin
 
 # This script connects to Cassandra's database server, checks and
@@ -7,6 +6,8 @@
 # host, port and destination, where to put downloaded files.
 # 
 # Script is designed to be runned without other parts of system.
+
+$:.unshift File.expand_path(File.dirname(__FILE__))
 
 require 'rubygems'
 require 'cassandra'
