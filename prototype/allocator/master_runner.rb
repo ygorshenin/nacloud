@@ -38,9 +38,6 @@ end
 
 begin
   options = parse_options(ARGV)
-rescue ArgumentError => e
-  STDERR.puts e.message
-  exit -1
 rescue Exception => e
   STDERR.puts e
   exit -1

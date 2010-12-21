@@ -78,8 +78,7 @@ end
 begin
   options = parse_options(ARGV)
 rescue Exception => e
-  STDERR.puts e.message
-  STDERR.puts e.backtrace
+  STDERR.puts e
   exit -1
 end
 

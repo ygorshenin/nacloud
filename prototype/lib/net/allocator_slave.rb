@@ -140,8 +140,13 @@ class AllocatorSlave
   def kill_task(options)
     task = AllocatorUtils::get_task_key(options)
     if @tasks.has_key? task
-      @tasks[task].kill
-      @logger.info("killed task #{task}")
+      @logger.info("trying to kill task #{task}...")
+      begin
+        @tasks[task].kill
+        @logger.info("killed task #{task}")
+      rescue Exception => e
+        @logger.error("problems with killing task #{task}: #{e}")
+      end
     else
       @logger.warn("no such task #{task}")
     end
