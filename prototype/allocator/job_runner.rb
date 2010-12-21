@@ -14,6 +14,9 @@
 #   - job: "second_job"
 #     binary: "/home/ygorhsenin/Coding/Area51/main"
 #
+
+$:.unshift File.expand_path(File.join(File.dirname(__FILE__), '..'))
+
 require 'drb'
 require 'fileutils'
 require 'lib/ext/core_ext'

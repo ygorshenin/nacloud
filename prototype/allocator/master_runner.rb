@@ -1,6 +1,8 @@
 #!/usr/bin/ruby
 # Author: Yuri Gorshenin
 
+$:.unshift File.expand_path(File.join(File.dirname(__FILE__), '..'))
+
 require 'lib/ext/core_ext'
 require 'lib/net/allocator_master'
 require 'lib/options'

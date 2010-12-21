@@ -11,7 +11,6 @@ $:.unshift File.expand_path(File.dirname(__FILE__))
 
 require 'rubygems'
 require 'cassandra'
-
 require 'slave_core'
 require 'digest'
 require 'optparse'
