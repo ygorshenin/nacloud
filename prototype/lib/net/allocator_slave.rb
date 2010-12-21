@@ -69,7 +69,7 @@ class AllocatorSlave
     
     @logger = Logger.new(@options[:logfile] || STDERR)
 
-    # Tasks hash, maps "user:job" to AllocatorTask object
+    # Tasks hash, maps "user:name" to AllocatorTask object
     @tasks = {}
   end
 
@@ -120,7 +120,7 @@ class AllocatorSlave
   end
 
   # Options must have:
-  # :user, :job, [:binary], [:command], :replicas, :options { :reruns }
+  # :user, :name, [:binary], [:command], :replicas, :options { :reruns }
   def add_task(options)
     add_task_infrastructure(options)
     options[:home] = File.join(get_task_home(options), @options[:vmdir_job])
@@ -201,6 +201,6 @@ class AllocatorSlave
   end
 
   def get_task_home(options)
-    File.join(@options[:home_dir], options[:user], options[:job] + '.' + options[:replica].to_s)
+    File.join(@options[:home_dir], options[:user], options[:name] + '.' + options[:replica].to_s)
   end
 end

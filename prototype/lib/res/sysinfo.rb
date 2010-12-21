@@ -17,6 +17,8 @@ class ResourceParser
     end
   end
 
+  # This code adds methods like parse_b, parse_h, parse_k and so on,
+  # which returns floor(parse(size) / 2 ** power)
   class << self
     PREFIXES.zip(POWERS).each do |prefix, power|
       define_method("parse_#{prefix}") do |size|

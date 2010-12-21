@@ -28,9 +28,9 @@ class AllocatorUtils
     [ok, os.string]
   end
 
-  # Options must have :user, :job and :replica keys
+  # Options must have :user, :name and :replica keys
   def self.get_task_key(options)
-    options[:user] + '.' + options[:job] + '.' + options[:replica].to_s
+    options[:user] + '.' + options[:name] + '.' + options[:replica].to_s
   end
 
   # Options must have :host and :port keys

@@ -1,3 +1,5 @@
+# Author: Yuri Gorshenin
+
 require 'drb'
 require 'rubygems'
 require 'cassandra'
@@ -35,11 +37,12 @@ class DatabaseSystem
 
   def exists_job?(options)
     jobs = @client.get(@options[:cf_jobs], options[:user])
-    return jobs.has_key?(options[:job])
+    return jobs.has_key?(options[:name])
   end
 
+  # inserts job key into cf_jobs[user][name]
   def insert_job(options)
-    @client.insert(@options[:cf_jobs], options[:user], { options[:job] => options[:user] + ':' + options[:job] })
+    @client.insert(@options[:cf_jobs], options[:user], { options[:name] => options[:user] + ':' + options[:name] })
   end
 
   def get_jobs_list(options)
@@ -48,7 +51,7 @@ class DatabaseSystem
 
   def delete_job(options)
     key = get_key(options)
-    @client.remove(@options[:cf_jobs], options[:user], options[:job])
+    @client.remove(@options[:cf_jobs], options[:user], options[:name])
     @client.remove(@options[:cf_binaries], key)
     @client.remove(@options[:cf_packages], key)
   end
@@ -71,7 +74,8 @@ class DatabaseSystem
   
   private
 
+  # gets job key from cf_jobs[user][name]
   def get_key(options)
-    @client.get(@options[:cf_jobs], options[:user], options[:job])
+    @client.get(@options[:cf_jobs], options[:user], options[:name])
   end
 end

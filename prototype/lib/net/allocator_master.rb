@@ -65,7 +65,7 @@ class AllocatorMaster
 
   # Adds and starts new job
   # Options must have:
-  # :user, :job, [:binary], [:command], :options { :reruns, :different_nodes }
+  # :user, :name, [:binary], [:command], :options { :reruns, :different_nodes }
   # Returns true, if success.
   def add_job(options)
     begin
@@ -83,7 +83,7 @@ class AllocatorMaster
   def kill_job(options)
     begin
       if not @db_client.exists_job?(options)
-        @logger.warn("can't delete job #{options[:user]}:#{options[:job]}")
+        @logger.warn("can't delete job #{options[:user]}:#{options[:name]}")
         return false
       end
 
