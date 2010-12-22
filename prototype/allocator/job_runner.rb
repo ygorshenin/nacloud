@@ -211,6 +211,7 @@ module JobChecks
     end
   end
 
+  # Checks jobs dependencies (i.e. all used packages)
   def check_dependencies(jobs, packages)
     h = {}
     packages.each { |package| h[package[:name]] = package }
@@ -253,7 +254,7 @@ end
 def upload_job(server, db_client, packages, job)
   begin
     if db_client.exists_job?(job)
-      STDERR.puts "#{job[:name]} already exists"
+      STDERR.puts "job '#{job[:name]}' already exists"
       return false
     end
     
@@ -274,7 +275,7 @@ def upload_job(server, db_client, packages, job)
     STDERR.puts e
     STDERR.puts e.backtrace
     return false
-  end  
+  end
 end
 
 begin
@@ -298,8 +299,8 @@ begin
   db_client = get_db_client(server, options[:host])
 
   case options[:action]
-  when :up then action = lambda { |job| upload_job(server, db_client, packages, job) and server.add_job(job) ? "done" : "fail" }
-  when :down then action = lambda { |job| server.kill_job(job) ? "done" : "fail" }
+  when :up then action = lambda { |job| upload_job(server, db_client, packages, job) and server.up_job(job) ? "done" : "fail" }
+  when :down then action = lambda { |job| server.down_job(job) ? "done" : "fail" }
   end
   
   config[:jobs].each { |job| STDERR.puts "for job '#{job[:name]}': #{action[job]}" }

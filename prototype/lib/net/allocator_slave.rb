@@ -17,21 +17,23 @@ class AllocatorTask
     
     @cmd = "cd #{@options[:home]};"
     if @options.has_key? :binary
-      @cmd += './' + @options[:binary]
+      @cmd += './' + File.basename(@options[:binary])
     elsif @options.has_key? :command
       @cmd += @options[:command]
     end
   end
   
   def start
-    @pid = fork do
-      Process::setsid
-      STDIN.reopen('/dev/null', 'r')
-      STDOUT.reopen('/dev/null', 'w')
-      STDERR.reopen('/dev/null', 'w')
-      exec @cmd
+    @thread = Thread.new do
+      @pid = fork do
+        Process::setsid
+        STDIN.reopen('/dev/null', 'r')
+        STDOUT.reopen('/dev/null', 'w')
+        STDERR.reopen('/dev/null', 'w')
+        exec @cmd
+      end
+      Process::waitpid(@pid)
     end
-    Process::detach(@pid)
   end
 
   def kill

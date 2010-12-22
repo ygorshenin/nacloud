@@ -41,7 +41,6 @@ class SPM
   # src is the path to package file
   # dst is the directory, where to put compressed files
   def self.install(src, dst)
-    STDERR.puts "<#{File.expand_path(src)}>"
     archive = File.basename(src) + '.tgz'
     FileUtils.cp(File.expand_path(src), File.expand_path(File.join(dst, archive)))
     result = `cd #{dst}; tar -xzf #{archive}; rm #{archive}`

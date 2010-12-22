@@ -15,7 +15,6 @@ def parse_options(argv)
   options[:action] = :start
 
   parser.on("--allocator_timeout=TIME", "default=#{options[:allocator_timeout]}", Integer) { |allocator_timeout| options[:allocator_timeout] = allocator_timeout }
-  parser.on("--job_timeout=TIME", "default=#{options[:job_timeout]}", Integer) { |job_timeout| options[:job_timeout] = job_timeout }
   parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on("--db_host=HOST", "database host", String) { |db_host| options[:db_host] = db_host }
   parser.on("--db_port=PORT", "database port", Integer) { |db_port| options[:db_port] = db_port }
