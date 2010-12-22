@@ -4,7 +4,7 @@ require 'drb'
 require 'lib/ext/core_ext'
 require 'lib/net/allocator_utils'
 require 'lib/net/task/resource_manager'
-require 'lib/net/task/taskpool'
+require 'lib/net/task/task_pool'
 require 'lib/package/spm'
 require 'logger'
 
@@ -85,7 +85,7 @@ class AllocatorSlave
   end
 
   # Checks, how many instances of that task may be added.
-  def num_available?(task)
+  def num_avagilable?(task)
     @pool.num_available?(task[:resources])
   end
 
@@ -178,7 +178,7 @@ class AllocatorSlave
       source = File.join(base, @options[:vmdir_packages], package)
       target = File.join(base, @options[:vmdir_job], package)
       FileUtils.mkdir_p(target)
-      package = get_db_client.get_package({ :package_name => package_name }.merge(options))
+      package = get_db_client.get_package({ :package_name => package }.merge(task))
       File.open(source, 'w') { |file| file.write(package) }
     end
   end

@@ -318,7 +318,7 @@ begin
   db_client = get_db_client(server, options[:host])
 
   case options[:action]
-  when :up then action = lambda { |job| upload_job(server, db_client, packages, job) and server.up_job(job) ? "done" : "fail" }
+  when :up then action = lambda { |job| (upload_job(server, db_client, packages, job) and server.up_job(job)) ? "done" : "fail" }
   when :down then action = lambda { |job| server.down_job(job) ? "done" : "fail" }
   end
   

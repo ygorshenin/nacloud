@@ -140,10 +140,10 @@ class AllocatorMaster
   
   # Checks, if slave is available.
   # This checks may contain resource checking.
-  def available?(slave, options)
+  def available?(slave, task)
     begin
       slave = DRbObject::new_with_uri(AllocatorUtils::get_uri(slave))
-      return slave.available?(options)
+      return slave.available?(task)
     rescue Exception => e
       @logger.error e
       return false
@@ -171,8 +171,8 @@ class AllocatorMaster
     uri, task = AllocatorUtils::get_uri(slave), AllocatorUtils::get_task_key(options)    
     begin
       object = DRbObject::new_with_uri(uri)
-      object.kill_task(options)
-      object.del_task(options)
+      object.stop_task(options)
+      object.delete_task(options)
       @job_to_slave.delete(task)
       @logger.info("task #{task} killed on slave #{uri}")
     rescue Exception => e

@@ -3,8 +3,9 @@
 
 $:.unshift File.expand_path(File.join(File.dirname(__FILE__), '..'))
 
-require 'lib/options'
 require 'lib/net/allocator_slave'
+require 'lib/options'
+require 'lib/res/sysinfo'
 require 'optparse'
 
 def parse_options(argv)
@@ -20,12 +21,15 @@ def parse_options(argv)
   parser.on("--root_dir=DIR", "path to directory with library files", "default=#{options[:root_dir]}", String) { |root_dir| options[:root_dir] = root_dir }
   parser.on("--server_host=HOST", "where is server?", String) { |server_host| options[:server_host] = server_host }
   parser.on("--server_port=PORT", "on which port?", String) { |server_port| options[:server_port] = server_port }
+  parser.on("--resources=FILE", "file with resources description", String) { |resources| options[:resources] = resources }
 
   parser.parse(*argv)
 
   AllocatorSlave::REQUIRED_OPTIONS.each do |option|
     raise ArgumentError.new("#{option} must be specified") unless options[option]
   end
+  options[:resources] = File.expand_path(options[:resources])
+  options[:resources] = SysInfo.read_info(options[:resources])
   options
 end
 

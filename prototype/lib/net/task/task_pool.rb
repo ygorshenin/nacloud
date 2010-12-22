@@ -30,7 +30,7 @@ class TaskPool
 
     task = Task.new(task)
     @resource_manager.allocate(task.resources)
-    @pool[key] = Task.new(task)
+    @pool[key] = task
   end
 
   # Starts already added task.
@@ -54,7 +54,7 @@ class TaskPool
   # Deletes already added task (stop + deallocate).
   # Raises TaskException, if no such task here.
   def delete(task)
-    key = AllocatorUtils::get_task_key(key)
+    key = AllocatorUtils::get_task_key(task)
     raise TaskException.new("here are no task with key #{key}") unless @pool.has_key? key
     task = @pool.delete(key)
     task.stop
