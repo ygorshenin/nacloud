@@ -26,7 +26,6 @@ require 'lib/package/spm'
 require 'optparse'
 
 ACTIONS = [:up, :down]
-IDENTIFIER_REGEX = /^[a-zA-Z0-9_]+$/
 
 def get_db_client(server, host)
   port = server.get_db_client_port
@@ -51,15 +50,15 @@ def parse_options(argv)
     raise ArgumentError.new("option '#{option}' must be specified") unless options[option]
   end
 
-  if options[:user] !~ IDENTIFIER_REGEX
-    raise ArgumentError.new("option 'user' must be a standart identifier")
-  end
-  
   # Ruby doesn't understand ~ abbrevs, so it's better to manually expand path
   options[:config] = File.expand_path(options[:config])
   options
 end
 
+# Basic configuration utils.
+# Allows user to read job's configuration file,
+# with automatically completed fields, or complete
+# existing config.
 class ConfigUtils
   # Reads and prepares configuration file from options[:config]
   def self.read_config(options)
@@ -131,12 +130,21 @@ class ConfigUtils
   end
 end
 
+# This module contains some checks.
+# May be useful in constructing config verificator.
 module JobChecks
+  IDENTIFIER_REGEX = /^[a-zA-Z0-9_]+$/
+  
   # Only checks job name.
   # Raises exception, if fails.
   def check_job_name(job)
     raise ArgumentError.new('job must have a name') unless job.has_key? :name
     raise ArgumentError.new("for job '#{job[:name]}': name must be an standart identifier") unless job[:name] =~ IDENTIFIER_REGEX
+  end
+
+  def check_job_user(job)
+    raise ArgumentError.new('job must have a user') unless job.has_key? :user
+    raise ArgumentError.new("for job '#{job[:user]}': user must be an standart identifier") unless job[:user] =~ IDENTIFIER_REGEX
   end
 
   # Checks that all packages used by this job are exists.
@@ -152,6 +160,7 @@ module JobChecks
   # Raises exception, if fails.
   def check_job(job)
     check_job_name(job)
+    check_job_user(job)
     
     if not job[:replicas].is_a?(Fixnum) or job[:replicas] < 1
       raise ArgumentError.new("for job '#{job[:name]}': replicas must be a fixnum >= 1")
@@ -209,10 +218,10 @@ module JobChecks
   end
 end
 
+# Strong Configuration File verificator.
+# Must verify all aspects of job configuration file,
+# i.e. jobs, users, packages, dependencies etc.
 class StrongConfigChecker
-  # Checks configuration file.
-  # Checks all info.
-  # Raises exception, if fails.
   def check(config)
     check_jobs config[:jobs]
     check_packages config[:packages]
@@ -223,11 +232,16 @@ class StrongConfigChecker
   include JobChecks
 end
 
+# Weak Configuration File verificator.
+# Verifies only job names and users.
 class WeakConfigChecker
   # Checks configuration file.
   # Checks only jobs names.
   def check(config)
-    config[:jobs].each { |job| check_job_name(job) }
+    config[:jobs].each do |job|
+      check_job_name job
+      check_job_user job
+    end
   end
 
   private
@@ -284,17 +298,11 @@ begin
   db_client = get_db_client(server, options[:host])
 
   case options[:action]
-  when :up
-    config[:jobs].each do |job|
-      done = upload_job(server, db_client, packages, job) and server.add_job(job)
-      puts "for job '#{job[:name]}': " + (done ? "done" : "fail")
-    end
-  when :down
-    config[:jobs].each do |job|
-      result = server.kill_job(job) ? "done" : "fail"
-      puts "for job '#{job[:name]}': " + result
-    end
+  when :up then action = lambda { |job| upload_job(server, db_client, packages, job) and server.add_job(job) ? "done" : "fail" }
+  when :down then action = lambda { |job| server.kill_job(job) ? "done" : "fail" }
   end
+  
+  config[:jobs].each { |job| STDERR.puts "for job '#{job[:name]}': #{action[job]}" }
 rescue Exception => e
   STDERR.puts e
   STDERR.puts e.backtrace
