@@ -46,6 +46,7 @@ def parse_options(argv)
   [:config, :host, :port, :user].each do |option|
     raise ArgumentError.new("option '#{option}' must be specified") unless options[option]
   end
+  options[:config] = File.expand_path(options[:config])
   options
 end
 
@@ -102,12 +103,12 @@ begin
   when :up
     config[:jobs].each do |job_options|
       done = upload_job(server, db_client, packages, job_options) and server.add_job(job_options)
-      puts "for job #{job_options[:name]}: " + (done ? "done" : "fail")
+      puts "for job '#{job_options[:name]}': " + (done ? "done" : "fail")
     end
   when :down
     config[:jobs].each do |job_options|
       result = server.kill_job(job_options) ? "done" : "fail"
-      puts "for job #{job_options[:name]}: " + result
+      puts "for job '#{job_options[:name]}': " + result
     end
   end
 rescue Exception => e
