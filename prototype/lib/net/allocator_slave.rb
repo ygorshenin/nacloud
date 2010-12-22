@@ -3,49 +3,16 @@
 require 'drb'
 require 'lib/ext/core_ext'
 require 'lib/net/allocator_utils'
+require 'lib/net/task/resource_manager'
+require 'lib/net/task/taskpool'
 require 'lib/package/spm'
 require 'logger'
-require 'pty'
-require 'thread'
-
-# Class represents single task.
-# options must have: :home, [:binary], [:command], [:reruns]
-# :binary must be short, i.e. not "/some/long/path/binary.bin" but "binary.bin".
-class AllocatorTask
-  def initialize(options)
-    @options = options
-    
-    @cmd = "cd #{@options[:home]};"
-    if @options.has_key? :binary
-      @cmd += './' + File.basename(@options[:binary])
-    elsif @options.has_key? :command
-      @cmd += @options[:command]
-    end
-  end
-  
-  def start
-    @thread = Thread.new do
-      @pid = fork do
-        Process::setsid
-        STDIN.reopen('/dev/null', 'r')
-        STDOUT.reopen('/dev/null', 'w')
-        STDERR.reopen('/dev/null', 'w')
-        exec @cmd
-      end
-      Process::waitpid(@pid)
-    end
-  end
-
-  def kill
-    Process::kill('-TERM', @pid)
-  end
-end
 
 # Class represents single worker.
 class AllocatorSlave
   include DRbUndumped
 
-  OPTIONS = [:id, :host, :port, :root_dir, :home_dir, :server_host, :server_port, :register_timeout]
+  OPTIONS = [:id, :host, :port, :root_dir, :home_dir, :server_host, :server_port, :register_timeout, :resources]
 
   DEFAULT_OPTIONS = {
     :vmdir_job => 'job',
@@ -63,19 +30,19 @@ class AllocatorSlave
     @options = DEFAULT_OPTIONS.merge(options)
     @options[:root_dir] = File.expand_path(@options[:root_dir])
 
-    # Creating root directory and home subdirectory
+    # Creating root directory and home subdirectory,
     # Chdirs into root directory
     FileUtils.mkdir_p(@options[:root_dir])
     Dir.chdir(@options[:root_dir])
     FileUtils.mkdir_p(@options[:home_dir])
+
+    # Creating task pool
+    @pool = TaskPool.new(ResourceManager.new(@options[:resources]))
     
     @logger = Logger.new(@options[:logfile] || STDERR)
-
-    # Tasks hash, maps "user:name" to AllocatorTask object
-    @tasks = {}
   end
 
-  # Start allocator slave DRb service
+  # Start allocator slave DRb service.
   def start(uri)
     @logger.info("running service #{uri}")
     DRb.start_service uri, self
@@ -83,84 +50,87 @@ class AllocatorSlave
     DRb.thread.join
   end
 
+  # Periodically connects to server and registers.
   def register_slave
     uri = "druby://#{@options[:server_host]}:#{@options[:server_port]}"
     slave = { :id => @options[:id], :host => @options[:host], :port => @options[:port] }
-    last_state = :fail
+    ok = false
     loop do
       begin
         server = DRbObject.new_with_uri(uri)
         server.register_slave(slave)
-        if last_state == :fail
+        if not ok
           @logger.info("successfully registered")
-          last_state = :success
+          ok = true
         end
       rescue Exception => e
-        if last_state == :success
+        if ok
           @logger.warn("can't update server")
-          last_state = :fail
+          ok = false
         end
       end
       sleep @options[:register_timeout]
     end
   end
 
-  # Stop allocator slave DRb service
+  # Stop allocator slave DRb service.
   def stop
     DRb.stop_service
     @logger.info("slave stopped")
   end
 
-  # Checks, if this node can run this task
-  def available?(options)
-    true # TODO: There must be resource control
+  # Checks, is it possible to run that task.
+  def available?(task)
+    @pool.available?(task[:resources])
   end
 
-  # Checks, if this node alive
+  # Checks, how many instances of that task may be added.
+  def num_available?(task)
+    @pool.num_available?(task[:resources])
+  end
+
+  # Checks, if this node alive.
   def alive?(options)
     true
   end
 
-  # Options must have:
-  # :user, :name, [:binary], [:command], :replicas, :options { :reruns }
-  def add_task(options)
-    add_task_infrastructure(options)
-    options[:home] = File.join(get_task_home(options), @options[:vmdir_job])
-    task = AllocatorUtils::get_task_key(options)
-    @tasks[task] = AllocatorTask.new(options)
-
-    @logger.info "added task #{task}"
+  # Tries to add new task.
+  # No resource checks, but TaskException if that task already here.
+  def add_task(task)
+    add_task_infrastructure(task)
+    install_task_packages(task)
+    task[:home] = File.join(AllocatorUtils::get_task_home(@options[:home_dir], task), @options[:vmdir_job])
+    @pool.add(task)
+    @logger.info "added task #{AllocatorUtils::get_task_key(task)}"
   end
 
-  def start_task(options)
-    task = AllocatorUtils::get_task_key(options)
-    @tasks[task].start if @tasks.has_key? task
-
-    @logger.info "started task #{task}"
+  # Tries to start task.
+  # Raises TaskException if there are no such task.
+  def start_task(task)
+    @pool.start(task)
+    @logger.info "started task #{AllocatorUtils::get_task_key(task)}"
   end
 
-  def kill_task(options)
-    task = AllocatorUtils::get_task_key(options)
-    if @tasks.has_key? task
-      @logger.info("trying to kill task #{task}...")
-      begin
-        @tasks[task].kill
-        @logger.info("killed task #{task}")
-      rescue Exception => e
-        @logger.error("problems with killing task #{task}: #{e}")
-      end
-    else
-      @logger.warn("no such task #{task}")
-    end
+  def restart_task(task)
+    @pool.stop(task)
+    install_task_packages(task)
+    @pool.start(task)
+    @logger.info "restarted task #{AllocatorUtils::get_task_key(task)}"
   end
 
-  def del_task(options)
-    task = AllocatorUtils::get_task_key(options)
-    return unless @tasks.has_key? task
-    del_task_infrastructure(options)
-    @tasks.delete(task)
+  # Tries to stop task.
+  # Raises TaskException if there are no such task.
+  def stop_task(task)
+    @pool.stop(task)
+    @logger.info "stopped task #{AllocatorUtils::get_task_key(task)}"
+  end
 
-    @logger.info("deleted task #{task}")
+  # Tries to delete task.
+  # Raises TaskException if there are no such task.
+  def delete_task(task)
+    @pool.delete(task)
+    delete_task_infrastructure(task)
+    @logger.info("deleted task #{AllocatorUtils::get_task_key(task)}")
   end
 
   private
@@ -171,38 +141,50 @@ class AllocatorSlave
     port = server.get_db_client_port
     DRbObject.new_with_uri("druby://#{@options[:server_host]}:#{port}")
   end
-  
-  # Creates all needed directories
-  def add_task_infrastructure(options)
-    base = get_task_home(options)
+
+  # Recreates job vmdir, install packages (without downloading them),
+  # downloads binary from db.
+  def install_task_packages(task)
+    base = AllocatorUtils::get_task_home(@options[:home_dir], task)
+
+    # Recreates job vmdir
+    FileUtils.rm_rf(File.join(base, @options[:vmdir_job]))
     FileUtils.mkdir_p(File.join(base, @options[:vmdir_job]))
-    FileUtils.mkdir_p(File.join(base, @options[:vmdir_packages]))
-    
-    if options.has_key?(:binary)
-      path = File.join(base, @options[:vmdir_job], File.basename(options[:binary]))
-      binary = get_db_client.get_binary(options)
+
+    # Download binary from database, if needed.
+    if task.has_key?(:binary)
+      path = File.join(base, @options[:vmdir_job], File.basename(task[:binary]))
+      binary = get_db_client.get_binary(task)
       File.open(path, 'w') { |file| file.write(binary) }
       FileUtils.chmod(755, path)
     end
 
-    if options.has_key?(:packages)
-      options[:packages].each do |package_name|
-        source = File.join(base, @options[:vmdir_packages], package_name)
-        target = File.join(base, @options[:vmdir_job], package_name)
-        FileUtils.mkdir_p(target)
-        package = get_db_client.get_package({ :package_name => package_name }.merge(options))
-        File.open(source, 'w') { |file| file.write(package) }
-        SPM::install(source, target)
-      end
+    # Installs packages from packages vmdir.
+    task[:packages].each do |package|
+      source = File.join(base, @options[:vmdir_packages], package)
+      target = File.join(base, @options[:vmdir_job], package)
+      FileUtils.mkdir_p(target)
+      SPM::install(source, target)
+    end
+  end
+  
+  # Creates all needed directories, downloads packages from db.
+  def add_task_infrastructure(task)
+    base = AllocatorUtils::get_task_home(@options[:home_dir], task)
+    FileUtils.mkdir_p(File.join(base, @options[:vmdir_job]))
+    FileUtils.mkdir_p(File.join(base, @options[:vmdir_packages]))
+    
+    task[:packages].each do |package|
+      source = File.join(base, @options[:vmdir_packages], package)
+      target = File.join(base, @options[:vmdir_job], package)
+      FileUtils.mkdir_p(target)
+      package = get_db_client.get_package({ :package_name => package_name }.merge(options))
+      File.open(source, 'w') { |file| file.write(package) }
     end
   end
 
-  # Deletes all used directories
-  def del_task_infrastructure(options)
-    FileUtils.rm_rf(get_task_home(options))
-  end
-
-  def get_task_home(options)
-    File.join(@options[:home_dir], options[:user], options[:name] + '.' + options[:replica].to_s)
+  # Deletes all used directories.
+  def delete_task_infrastructure(task)
+    FileUtils.rm_rf(AllocatorUtils::get_task_home(@options[:home_dir], task))
   end
 end

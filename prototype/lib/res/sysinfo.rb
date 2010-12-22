@@ -10,13 +10,13 @@ class SysInfo
   MEMINFO = '/proc/meminfo'
   CPUINFO = '/proc/cpuinfo'
   
-  # Returns hash { :ram, :cpu, :cpu_num }
+  # Returns hash { :ram, :cpu, :num_cpu, :disk }
   def self.get_info
-    ram, cpu = get_ram_info, get_cpu_info
-    return {}.merge(ram).merge(cpu)
+    ram, cpu, disk = get_ram_info, get_cpu_info, get_disk_info
+    return {}.merge(ram).merge(cpu).merge(disk)
   end
 
-  # Returns hash { 
+  # Returns hash { :ram, :cpu, :num_cpu, :disk }
   def self.read_info(path)
     attributes = {}
     File.open(path, 'r') do |file|
@@ -25,7 +25,7 @@ class SysInfo
         case key
         when 'ram' then attributes[:ram] = ResourceParser.parse_m(value)
         when 'cpu' then attributes[:cpu] = ResourceParser.parse_m(value)
-        when 'cpu_num' then attributes[:cpu_num] = value.to_i
+        when 'num_cpu' then attributes[:num_cpu] = value.to_i
         when 'disk' then attributes[:disk] = ResourceParser.parse_m(value)
         end
       end
@@ -51,11 +51,15 @@ class SysInfo
       file.each do |line|
         key, value = line.strip.split(/\s*:\s*/).map { |v| v.downcase }
         case key
-        when 'processor' then result[:cpu_num] = value.to_i + 1
-        when 'cpu mhz' then result[:cpu] = value.to_f
+        when 'processor' then result[:num_cpu] = value.to_i + 1
+        when 'cpu mhz' then result[:cpu] = value.to_i
         end
       end
     end
     result
+  end
+
+  def self.get_disk_info
+    # TO DO: get available disk space
   end
 end

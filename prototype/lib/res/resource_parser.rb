@@ -6,7 +6,8 @@ class ResourceParser
   HASH = PREFIXES.zip(POWERS).map{|prefix, power| {prefix => power}}.inject({}) {|r, h| r.merge(h)}
 
   # Parses strings, that contains integer and standart suffix (byte, kilobyte, megabyte or hz, mhz, ghz),
-  # and returns value in basic unit (byte or hz)
+  # and returns value in basic unit (byte or hz).
+  # Returns integer value.
   def self.parse(size)
     size = size.downcase.gsub(/\s+/, '')
     if size =~ /[a-z]+/
@@ -18,7 +19,8 @@ class ResourceParser
   end
 
   # This code adds methods like parse_b, parse_h, parse_k and so on,
-  # which returns floor(parse(size) / 2 ** power)
+  # which returns floor(parse(size) / 2 ** power).
+  # Returns integer value.
   class << self
     PREFIXES.zip(POWERS).each do |prefix, power|
       define_method("parse_#{prefix}") do |size|

@@ -28,13 +28,17 @@ class AllocatorUtils
     [ok, os.string]
   end
 
-  # Options must have :user, :name and :replica keys
-  def self.get_task_key(options)
-    options[:user] + '.' + options[:name] + '.' + options[:replica].to_s
+  # Task must have :user, :name and :replica keys
+  def self.get_task_key(task)
+    task[:user] + '.' + task[:name] + '.' + task[:replica].to_s
+  end
+
+  def self.get_task_home(base, task)
+    File.join(base, task[:user], task[:name] + '.' + task[:replica].to_s)    
   end
 
   # Options must have :host and :port keys
-  def self.get_uri(options)
-    "druby://#{options[:host]}:#{options[:port]}"
+  def self.get_uri(task)
+    "druby://#{task[:host]}:#{task[:port]}"
   end
 end

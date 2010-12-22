@@ -60,6 +60,11 @@ end
 # with automatically completed fields, or complete
 # existing config.
 class ConfigUtils
+  # Default resources values
+  DEFAULT_RESOURCES = {
+    :ram => 64, # in Mb
+  }
+  
   # Reads and prepares configuration file from options[:config]
   def self.read_config(options)
     prepare_config(get_options_from_file(options[:config]), options)
@@ -119,6 +124,10 @@ class ConfigUtils
     end
 
     job[:command] = String(job[:command]) if job.has_key? :command
+
+    job[:resources] ||= {}
+    job[:resources].merge(DEFAULT_RESOURCES)
+    job[:resources][:ram] = job[:resources][:ram].to_i
   end
 
   # Prepares jobs description.
@@ -142,9 +151,18 @@ module JobChecks
     raise ArgumentError.new("for job '#{job[:name]}': name must be an standart identifier") unless job[:name] =~ IDENTIFIER_REGEX
   end
 
+  # Checks user key and user value format.
+  # Raises exception, if fails.
   def check_job_user(job)
     raise ArgumentError.new('job must have a user') unless job.has_key? :user
-    raise ArgumentError.new("for job '#{job[:user]}': user must be an standart identifier") unless job[:user] =~ IDENTIFIER_REGEX
+    raise ArgumentError.new("for job '#{job[:name]}': user must be an standart identifier") unless job[:user] =~ IDENTIFIER_REGEX
+  end
+
+  # Checks resources (must be Numeric, non-negative etc.)
+  # Raises exception, if fails.
+  def check_job_resources(job)
+    raise ArgumentError("for job '#{job[:name]}': ram must be a number") unless job[:resources][:ram].is_a?(Numeric)
+    raise ArgumentError("for job '#{job[:name]}': ram usage must be >= 0") unless job[:resources][:ram] >= 0
   end
 
   # Checks that all packages used by this job are exists.
@@ -161,6 +179,7 @@ module JobChecks
   def check_job(job)
     check_job_name(job)
     check_job_user(job)
+    check_job_resources(job)
     
     if not job[:replicas].is_a?(Fixnum) or job[:replicas] < 1
       raise ArgumentError.new("for job '#{job[:name]}': replicas must be a fixnum >= 1")
