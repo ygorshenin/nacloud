@@ -24,7 +24,9 @@ class DatabaseSystem
       :cf_jobs => :Jobs,
       :cf_binaries => :Binaries,
       :cf_packages => :Packages,
+      :cf_descriptions => :Descriptions,
       :col_binary => 'binary',
+      :col_description => 'description',
     }.merge(options)
     @client = Cassandra.new(@options[:keyspace], @options[:host] + ':' + @options[:port].to_s)
   end
@@ -44,14 +46,13 @@ class DatabaseSystem
 
   # inserts job key into cf_jobs[user][name]
   def insert_job(job)
-    key = job[:user] + ':' + job[:name]
-    # bad solution - use job description as key,
-    # but this is prototype. Hope, in next versions it'll changed.
-    @client.insert(@options[:cf_jobs], job[:user], { job[:name] => job.to_yaml })
+    key = generate_job_key(job)
+    @client.insert(@options[:cf_jobs], job[:user], { job[:name] => key })
+    @client.insert(@options[:cf_descriptions], get_key(job), { @options[:col_description] => job.to_yaml })
   end
 
   def get_job_description(job)
-    content = @client.get(@options[:cf_jobs], job[:user])[job[:name]]
+    content = @client.get(@options[:cf_descriptions], get_key(job), @options[:col_description])
     YAML::load(content)
   end
 
@@ -83,6 +84,10 @@ class DatabaseSystem
   end
   
   private
+
+  def generate_job_key(job)
+    return job[:user] + ':' + job[:name]
+  end
 
   # gets job key from cf_jobs[user][name]
   def get_key(job)

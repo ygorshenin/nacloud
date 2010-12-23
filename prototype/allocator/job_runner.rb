@@ -321,17 +321,15 @@ begin
       result = upload_job(server, db_client, packages, job)
       if not result.first # if fails upload some job...
         db_client.delete_job(job) # delete it from db client
-        result.second
+        return result.second
       else
         result = server.up_job(job) # if fails up job...
-        if not result.first # delete it from server
-          server.down_job(job)
-        end
-        result.second
+        server.down_job(job) unless result.first # delete it from server
+        return result.second
       end
     end
     
-  when :down then action = lambda { |job| server.down_job(job).second }
+  when :down then action = lambda { |job| return server.down_job(job).second }
   end
   
   config[:jobs].each { |job| STDERR.puts "\nfor job '#{job[:name]}':\n#{action[job]}" }

@@ -144,6 +144,7 @@
     <Keyspace Name="Storage">
       <ColumnFamily Name="Jobs" CompareWith="UTF8Type" KeysCached="100%"/>
       <ColumnFamily Name="Binaries" CompareWith="UTF8Type" />
+      <ColumnFamily Name="Descriptions" CompareWith="UTF8Type" />
       <ColumnFamily Name="Packages" CompareWith="UTF8Type" />
       <ColumnFamily Name="NodeLib"
 		    CompareWith="UTF8Type"

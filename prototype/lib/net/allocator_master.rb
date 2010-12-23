@@ -66,6 +66,7 @@ class AllocatorMaster
   # Starts new job.
   # Returns pair [ success, message ]
   def up_job(job)
+    return [false, 'incorrect job description'] unless job
     @mutex.synchronize do
       if job[:replicas] > 1 and job[:options][:different_nodes] == true
         return distributively_run_job(job)
@@ -78,6 +79,7 @@ class AllocatorMaster
   # Stops and deletes job, removes all data from db and slaves.
   # Returns pair [ success, message ]
   def down_job(job)
+    return [false, 'incorrect job description'] unless job
     ok, io = true, StringIO.new
     begin
       if not @db_client.exists_job? job
@@ -111,28 +113,26 @@ class AllocatorMaster
 
   private
 
-  def distributively_run_job(options)
-    used_slaves = Set.new
-    options[:replicas].times do |replica|
-      loop do
-        # Checks available slave that not in used_slaves
-        slave = @slaves.find { |id, slave| not used_slaves.include?(id) and available?(slave, options) }
-        # If fails, tries to find available slave
-        slave = @slaves.find { |id, slave| available?(slave, options) } unless slave
-        if not slave.nil?
-          used_slaves.add(slave.first)
-          up_task_on_slave(slave.second, { :replica => replica }.merge(options))
-          break
-        else
-          sleep @options[:allocator_timeout]
-        end
+  # Tries to run job greedy.
+  # Returns pair [success, message]
+  def distributively_run_job(job)
+    return [false, 'incorrect job description'] unless job
+    return [false , 'no available resources'] if @slaves.map { |id, slave| (available?(slave, job) ? 1 : 0) }.sum < job[:replicas]
+    replica = 0
+    @slaves.each do |id, slave|
+      if available?(slave, job)
+        up_task_on_slave(slave, {:replica => replica}.merge(job))
+        replica += 1
+        return [true, 'success'] if replica == job[:replicas]
       end
     end
+    return [false, 'strange point']
   end
 
   # Tries to run job greedy.
   # Returns pair [success, message]
   def greedy_run_job(job)
+    return [false, 'incorrect job description'] unless job
     return [false, 'no available resources'] if @slaves.map { |id, slave| num_available?(slave, job) }.sum < job[:replicas]
     replica = 0
     @slaves.each do |id, slave|
@@ -143,23 +143,14 @@ class AllocatorMaster
       end
     end
     return [false, 'strange point']
-    # options[:replicas].times do |replica|
-    #   loop do
-    #     slave = @slaves.find_all { |id, slave| available?(slave, ) }
-    #     if not slave.nil?
-    #       up_task_on_slave(slave.second, { :replica => replica }.merge(options))
-    #       break
-    #     else
-    #       sleep @options[:allocator_timeout]
-    #     end
-    #   end
-    # end
   end
   
   # Checks, if slave is available.
   # This checks contain resource checking.
   # Returns failse, if fails.
+  # Checks arguments.
   def available?(slave, task)
+    return false unless slave and task
     begin
       slave = DRbObject::new_with_uri(AllocatorUtils::get_uri(slave))
       return slave.available? task
@@ -172,7 +163,9 @@ class AllocatorMaster
   # Checks how many instances of that task
   # can be runned on that slave.
   # If connection fails, returns zero.
+  # Checks arguments.
   def num_available?(slave, task)
+    return false unless slave and task
     begin
       slave = DRbObject::new_with_uri(AllocatorUtils::get_uri(slave))
       return slave.num_available?(task)
