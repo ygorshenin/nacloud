@@ -62,7 +62,8 @@ end
 class ConfigUtils
   # Default resources values
   DEFAULT_RESOURCES = {
-    :ram => 64, # in Mb
+    :ram => 64, # default RAM usage by app, 64 Mb
+    :disk => 64, # default disk usage by app, 64 Mb
   }
   
   # Reads and prepares configuration file from options[:config]
@@ -163,6 +164,8 @@ module JobChecks
   def check_job_resources(job)
     raise ArgumentError("for job '#{job[:name]}': ram must be a number") unless job[:resources][:ram].is_a?(Numeric)
     raise ArgumentError("for job '#{job[:name]}': ram usage must be >= 0") unless job[:resources][:ram] >= 0
+    raise ArgumentError("for job '#{job[:name]}': disk usage must be a number") unless job[:resources][:disk].is_a?(Numeric)
+    raise ArgumentError("for job '#{job[:name]}': disk usage must be >= 0") unless job[:resources][:disk] >= 0
   end
 
   # Checks that all packages used by this job are exists.
@@ -275,11 +278,13 @@ def upload_job(server, db_client, packages, job)
     return [false, "job '#{job[:name]}' already exists"] if db_client.exists_job?(job)
     
     db_client.insert_job(job)
-    
+
+    # Upload job binary
     if job.has_key?(:binary)
       File.open(job[:binary], 'r') { |file| db_client.insert_binary(file.read, job_options) }
     end
-    
+
+    # Upload all used packages
     job[:packages].each do |package|
       SPM::build(packages[package])
       File.open(package, 'r') { |file| db_client.insert_package(file.read, { :package_name => package }.merge(job)) }
@@ -296,7 +301,6 @@ begin
   options = parse_options(ARGV)
 rescue Exception => e
   STDERR.puts e
-  STDERR.puts e.backtrace
   exit -1
 end
 
@@ -315,12 +319,12 @@ begin
   case options[:action]
   when :up then action = lambda do |job|
       result = upload_job(server, db_client, packages, job)
-      if not result.first
-        db_client.delete_job(job)
+      if not result.first # if fails upload some job...
+        db_client.delete_job(job) # delete it from db client
         result.second
       else
-        result = server.up_job(job)
-        if not result.first
+        result = server.up_job(job) # if fails up job...
+        if not result.first # delete it from server
           server.down_job(job)
         end
         result.second
@@ -329,6 +333,7 @@ begin
     
   when :down then action = lambda { |job| server.down_job(job).second }
   end
+  
   config[:jobs].each { |job| STDERR.puts "\nfor job '#{job[:name]}':\n#{action[job]}" }
 rescue Exception => e
   STDERR.puts e

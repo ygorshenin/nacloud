@@ -185,7 +185,10 @@ class AllocatorMaster
   # Runs task on slave.
   # Slave and task are hashes of options.
   # Returns pair [ success, message ].
+  # Checks arguments.
   def up_task_on_slave(slave, task)
+    return [false, 'no such slave'] unless slave
+    return [false, 'no such task'] unless task
     uri, key = AllocatorUtils::get_uri(slave), AllocatorUtils::get_task_key(task)
     begin
       client = DRbObject::new_with_uri(uri)
@@ -203,7 +206,10 @@ class AllocatorMaster
   # Kills task with options on slave.
   # Slave and task are hashes of options.
   # Returns pair [ success, message ].
+  # Checks arguments.
   def down_task_on_slave(slave, task)
+    return [false, 'no such slave'] unless slave
+    return [false, 'no such task'] unless task
     uri, key = AllocatorUtils::get_uri(slave), AllocatorUtils::get_task_key(task)
     begin
       client = DRbObject::new_with_uri(uri)
