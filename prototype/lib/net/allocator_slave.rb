@@ -85,7 +85,7 @@ class AllocatorSlave
   end
 
   # Checks, how many instances of that task may be added.
-  def num_avagilable?(task)
+  def num_available?(task)
     @pool.num_available?(task[:resources])
   end
 

@@ -126,7 +126,7 @@ class ConfigUtils
     job[:command] = String(job[:command]) if job.has_key? :command
 
     job[:resources] ||= {}
-    job[:resources].merge(DEFAULT_RESOURCES)
+    job[:resources] = job[:resources].merge(DEFAULT_RESOURCES)
     job[:resources][:ram] = job[:resources][:ram].to_i
   end
 
@@ -269,16 +269,13 @@ class WeakConfigChecker
 end
 
 # Uploads job into server, using database client.
-# Returns true if success.
+# Returns pair [success, message]
 def upload_job(server, db_client, packages, job)
   begin
-    if db_client.exists_job?(job)
-      STDERR.puts "job '#{job[:name]}' already exists"
-      return false
-    end
+    return [false, "job '#{job[:name]}' already exists"] if db_client.exists_job?(job)
     
     db_client.insert_job(job)
-
+    
     if job.has_key?(:binary)
       File.open(job[:binary], 'r') { |file| db_client.insert_binary(file.read, job_options) }
     end
@@ -288,12 +285,10 @@ def upload_job(server, db_client, packages, job)
       File.open(package, 'r') { |file| db_client.insert_package(file.read, { :package_name => package }.merge(job)) }
       FileUtils.rm(package)
     end
-    return true
+    return [true, 'success']
     
   rescue Exception => e
-    STDERR.puts e
-    STDERR.puts e.backtrace
-    return false
+    return [false, e.message]
   end
 end
 
@@ -318,11 +313,23 @@ begin
   db_client = get_db_client(server, options[:host])
 
   case options[:action]
-  when :up then action = lambda { |job| (upload_job(server, db_client, packages, job) and server.up_job(job)) ? "done" : "fail" }
-  when :down then action = lambda { |job| server.down_job(job) ? "done" : "fail" }
+  when :up then action = lambda do |job|
+      result = upload_job(server, db_client, packages, job)
+      if not result.first
+        db_client.delete_job(job)
+        result.second
+      else
+        result = server.up_job(job)
+        if not result.first
+          server.down_job(job)
+        end
+        result.second
+      end
+    end
+    
+  when :down then action = lambda { |job| server.down_job(job).second }
   end
-  
-  config[:jobs].each { |job| STDERR.puts "for job '#{job[:name]}': #{action[job]}" }
+  config[:jobs].each { |job| STDERR.puts "\nfor job '#{job[:name]}':\n#{action[job]}" }
 rescue Exception => e
   STDERR.puts e
   STDERR.puts e.backtrace

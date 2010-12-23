@@ -1,6 +1,6 @@
 class Array
   def sum
-    self.inject { |r, v| r + v }
+    self.inject(0) { |r, v| r + v }
   end
 
   def second

@@ -64,38 +64,44 @@ class AllocatorMaster
   end
 
   # Starts new job.
-  # Returns true, if success.
-  def up_job(options)
+  # Returns pair [ success, message ]
+  def up_job(job)
     @mutex.synchronize do
-      if options[:replicas] > 1 and options[:options][:different_nodes] == true
-        distributively_run_job options
+      if job[:replicas] > 1 and job[:options][:different_nodes] == true
+        return distributively_run_job(job)
       else
-        greedy_run_job options
+        return greedy_run_job(job)
       end
     end
   end
 
-  # Stops and deletes job, removes all data from db
-  # Returns true, if success.
-  def down_job(options)
+  # Stops and deletes job, removes all data from db and slaves.
+  # Returns pair [ success, message ]
+  def down_job(job)
+    ok, io = true, StringIO.new
     begin
-      if not @db_client.exists_job?(options)
-        @logger.warn "can't delete job #{options[:user]}:#{options[:name]}"
-        return false
+      if not @db_client.exists_job? job
+        @logger.warn "can't delete job '#{job[:user]}:#{job[:name]}': no such job"
+        return [false, 'no such job']
       end
 
-      options[:replicas].times do |replica|
-        job_options = { :replica => replica }.merge(options)
-        task = AllocatorUtils::get_task_key job_options
-        next if not @job_to_slave.has_key? task
-        kill_job_on_slave(@job_to_slave[task], job_options)
+      # Retrieves full job description from database,
+      # because job argument may contain incorrect info about :replicas
+      job = @db_client.get_job_description(job)
+      @db_client.delete_job job
+      job[:replicas].times do |replica|
+        task = {:replica => replica}.merge(job)
+        key = AllocatorUtils::get_task_key task
+        result = down_task_on_slave(@job_to_slave[key], task)
+        if not result.first
+          ok = false
+          io.puts result.second
+        end
       end
-
-      @db_client.delete_job options
-      return true
+      return [ok, (ok ? 'success' : io.string)]
     rescue Exception => e
       @logger.error e
-      return false
+      return [false, e.message]
     end
   end
 
@@ -115,7 +121,7 @@ class AllocatorMaster
         slave = @slaves.find { |id, slave| available?(slave, options) } unless slave
         if not slave.nil?
           used_slaves.add(slave.first)
-          run_job_on_slave(slave.second, { :replica => replica }.merge(options))
+          up_task_on_slave(slave.second, { :replica => replica }.merge(options))
           break
         else
           sleep @options[:allocator_timeout]
@@ -124,59 +130,90 @@ class AllocatorMaster
     end
   end
 
-  def greedy_run_job(options)
-    options[:replicas].times do |replica|
-      loop do
-        slave = @slaves.find { |id, slave| available?(slave, options) }
-        if not slave.nil?
-          run_job_on_slave(slave.second, { :replica => replica }.merge(options))
-          break
-        else
-          sleep @options[:allocator_timeout]
-        end
+  # Tries to run job greedy.
+  # Returns pair [success, message]
+  def greedy_run_job(job)
+    return [false, 'no available resources'] if @slaves.map { |id, slave| num_available?(slave, job) }.sum < job[:replicas]
+    replica = 0
+    @slaves.each do |id, slave|
+      num_available?(slave, job).times do
+        up_task_on_slave(slave, {:replica => replica}.merge(job))
+        replica += 1
+        return [true, 'success'] if replica == job[:replicas]
       end
     end
+    return [false, 'strange point']
+    # options[:replicas].times do |replica|
+    #   loop do
+    #     slave = @slaves.find_all { |id, slave| available?(slave, ) }
+    #     if not slave.nil?
+    #       up_task_on_slave(slave.second, { :replica => replica }.merge(options))
+    #       break
+    #     else
+    #       sleep @options[:allocator_timeout]
+    #     end
+    #   end
+    # end
   end
   
   # Checks, if slave is available.
-  # This checks may contain resource checking.
+  # This checks contain resource checking.
+  # Returns failse, if fails.
   def available?(slave, task)
     begin
       slave = DRbObject::new_with_uri(AllocatorUtils::get_uri(slave))
-      return slave.available?(task)
+      return slave.available? task
     rescue Exception => e
       @logger.error e
       return false
     end
   end
 
-  # Runs job with options on slave.
-  # :replica key must be specified in options.
-  def run_job_on_slave(slave, options)
-    uri, task = AllocatorUtils::get_uri(slave), AllocatorUtils::get_task_key(options)
+  # Checks how many instances of that task
+  # can be runned on that slave.
+  # If connection fails, returns zero.
+  def num_available?(slave, task)
     begin
-      object = DRbObject::new_with_uri(uri)
-      object.add_task options
-      object.start_task options
-      @job_to_slave[task] = slave
-      @logger.info("task #{task} started on slave #{uri}")
+      slave = DRbObject::new_with_uri(AllocatorUtils::get_uri(slave))
+      return slave.num_available?(task)
     rescue Exception => e
       @logger.error e
+      return 0
     end
   end
 
-  # Kills job with options on slave.
-  # :replica key must be specified in options.
-  def kill_job_on_slave(slave, options)
-    uri, task = AllocatorUtils::get_uri(slave), AllocatorUtils::get_task_key(options)    
+  # Runs task on slave.
+  # Slave and task are hashes of options.
+  # Returns pair [ success, message ].
+  def up_task_on_slave(slave, task)
+    uri, key = AllocatorUtils::get_uri(slave), AllocatorUtils::get_task_key(task)
     begin
-      object = DRbObject::new_with_uri(uri)
-      object.stop_task(options)
-      object.delete_task(options)
-      @job_to_slave.delete(task)
-      @logger.info("task #{task} killed on slave #{uri}")
+      client = DRbObject::new_with_uri(uri)
+      client.add_task task
+      client.start_task task
+      @job_to_slave[key] = slave
+      @logger.info("task #{key} started on slave #{uri}")
+      return [true, 'success']
     rescue Exception => e
-      @logger.error(e)
+      @logger.error e.message
+      return [false, e.message]
+    end
+  end
+
+  # Kills task with options on slave.
+  # Slave and task are hashes of options.
+  # Returns pair [ success, message ].
+  def down_task_on_slave(slave, task)
+    uri, key = AllocatorUtils::get_uri(slave), AllocatorUtils::get_task_key(task)
+    begin
+      client = DRbObject::new_with_uri(uri)
+      client.delete_task(task)
+      @job_to_slave.delete(key)
+      @logger.info("task #{key} killed on slave #{uri}")
+      return [true, 'success']
+    rescue Exception => e
+      @logger.error e.message
+      return [false, e.message]
     end
   end
 end

@@ -1,8 +1,10 @@
 # Author: Yuri Gorshenin
 
-require 'drb'
 require 'rubygems'
+
 require 'cassandra'
+require 'drb'
+require 'yaml'
 
 # DatabaseSystem allows us to put/get binaries, commands and packages into Cassandra's database
 
@@ -41,8 +43,16 @@ class DatabaseSystem
   end
 
   # inserts job key into cf_jobs[user][name]
-  def insert_job(options)
-    @client.insert(@options[:cf_jobs], options[:user], { options[:name] => options[:user] + ':' + options[:name] })
+  def insert_job(job)
+    key = job[:user] + ':' + job[:name]
+    # bad solution - use job description as key,
+    # but this is prototype. Hope, in next versions it'll changed.
+    @client.insert(@options[:cf_jobs], job[:user], { job[:name] => job.to_yaml })
+  end
+
+  def get_job_description(job)
+    content = @client.get(@options[:cf_jobs], job[:user])[job[:name]]
+    YAML::load(content)
   end
 
   def get_jobs_list(options)
@@ -75,7 +85,7 @@ class DatabaseSystem
   private
 
   # gets job key from cf_jobs[user][name]
-  def get_key(options)
-    @client.get(@options[:cf_jobs], options[:user], options[:name])
+  def get_key(job)
+    @client.get(@options[:cf_jobs], job[:user], job[:name])
   end
 end
