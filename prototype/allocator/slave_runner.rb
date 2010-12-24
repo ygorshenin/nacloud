@@ -8,10 +8,13 @@ require 'lib/options'
 require 'lib/res/sysinfo'
 require 'optparse'
 
+ACTIONS = [:up, :down, :status]
+
 def parse_options(argv)
-  options = AllocatorSlave::DEFAULT_OPTIONS
+  parser, options = OptionParser.new, AllocatorSlave::DEFAULT_OPTIONS
+  options[:action] = :up
   
-  parser = OptionParser.new
+  parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on("--home_dir=DIR", "name of tasks home directory,", "where all VMDirs will be created", "default=#{options[:home_dir]}", String) { |home_dir| options[:home_dir] = home_dir }
   parser.on("--host=HOST", "host, on which slave must be runned", "default=#{options[:host]}", String) { |host| options[:host] = host }
   parser.on("--id=ID", "id of slave, must be unique", String) { |id| options[:id] = id }
@@ -41,13 +44,21 @@ rescue Exception => e
 end
 
 begin
-  slave = AllocatorSlave.new(options)
+  DRb.start_service
   uri = "druby://#{`hostname`.strip}:#{options[:port]}"
-  trap ('INT') { slave.stop }
-  slave.start(uri)
-rescue ArgumentError => e
-  STDERR.puts e.message
-  exit -1
+  case options[:action]
+  when :up
+    fork do
+      slave = AllocatorSlave.new(options)
+      slave.up(uri)
+    end
+  when :down
+    slave = DRbObject.new_with_uri(uri)
+    slave.down
+  when :status
+    slave = DRbObject.new_with_uri(uri)
+    puts slave.status
+  end
 rescue Exception => e
   STDERR.puts e
   exit -1

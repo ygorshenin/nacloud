@@ -40,13 +40,17 @@ class AllocatorSlave
     @pool = TaskPool.new(ResourceManager.new(@options[:resources]))
     
     @logger = Logger.new(@options[:logfile] || STDERR)
+
+    @status = :created
   end
 
   # Start allocator slave DRb service.
-  def start(uri)
+  def up(uri)
     @logger.info("running service #{uri}")
     DRb.start_service uri, self
     Thread.new { register_slave }
+    trap('INT') { down }
+    @status = :running
     DRb.thread.join
   end
 
@@ -74,9 +78,14 @@ class AllocatorSlave
   end
 
   # Stop allocator slave DRb service.
-  def stop
+  def down
     DRb.stop_service
+    @status = :stopped
     @logger.info("slave stopped")
+  end
+
+  def status
+    return @status
   end
 
   # Checks, is it possible to run that task.

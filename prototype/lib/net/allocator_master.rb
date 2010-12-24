@@ -36,21 +36,31 @@ class AllocatorMaster
     @logger = Logger.new(@options[:logfile] || STDERR)
     # Mutex for slaves mutual execution access
     @mutex = Mutex.new
+    
+    @status = :created
   end
 
   # Starts DRb service.
-  def start(uri)
+  def up(uri)
     @logger.info "running service #{uri}"
     DRb.start_service uri, self
     @db_client.start "druby://#{@options[:host]}:#{@options[:db_client_port]}"
+    trap('INT') { down }
+    @status = :running
     DRb.thread.join
   end
 
   # Stops DRb service.
-  def stop
+  def down
     DRb.stop_service
     @db_client.stop
+    @status = :stopped
     @logger.info "master stopped"
+  end
+
+  # Returns master status
+  def status
+    return @status
   end
 
   # Register slave (but this slave may be already registered).

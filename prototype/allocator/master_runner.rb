@@ -8,13 +8,12 @@ require 'lib/net/allocator_master'
 require 'lib/options'
 require 'optparse'
 
-ACTIONS = [:start, :stop]
+ACTIONS = [:up, :down, :status]
 
 def parse_options(argv)
   parser, options = OptionParser.new, AllocatorMaster::DEFAULT_OPTIONS
-  options[:action] = :start
+  options[:action] = :up
 
-  parser.on("--allocator_timeout=TIME", "default=#{options[:allocator_timeout]}", Integer) { |allocator_timeout| options[:allocator_timeout] = allocator_timeout }
   parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on("--db_host=HOST", "database host", String) { |db_host| options[:db_host] = db_host }
   parser.on("--db_port=PORT", "database port", Integer) { |db_port| options[:db_port] = db_port }
@@ -43,16 +42,20 @@ rescue Exception => e
 end
 
 begin
+  DRb.start_service
   uri = "druby://#{options[:host]}:#{options[:port]}"
   case options[:action]
-  when :start
-    master = AllocatorMaster.new(options)
-    trap ('INT') { master.stop }
-    master.start(uri)
-  when :stop
-    DRb.start_service
+  when :up
+    fork do
+      master = AllocatorMaster.new(options)
+      master.up(uri)
+    end
+  when :down
     master = DRbObject.new_with_uri(uri)
-    master.stop
+    master.down
+  when :status
+    master = DRbObject.new_with_uri(uri)
+    puts master.status
   end
 rescue Exception => e
   STDERR.puts e
