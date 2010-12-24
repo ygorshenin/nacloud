@@ -25,7 +25,7 @@ def parse_options(argv)
   parser.parse(*argv)
 
   required = [:port]
-  required += [:db_host, :db_port, :db_client_port] if options[:action] == :start
+  required += [:db_host, :db_port, :db_client_port] if options[:action] == :up
   
   required.each do |option|
     raise ArgumentError.new("#{option} must be specified") unless options.has_key?(option)

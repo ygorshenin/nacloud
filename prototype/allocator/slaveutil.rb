@@ -28,11 +28,16 @@ def parse_options(argv)
 
   parser.parse(*argv)
 
-  AllocatorSlave::REQUIRED_OPTIONS.each do |option|
+  required = [:port]
+  required += AllocatorSlave::REQUIRED_OPTIONS if options[:action] == :up
+
+  required.each do |option|
     raise ArgumentError.new("#{option} must be specified") unless options[option]
   end
-  options[:resources] = File.expand_path(options[:resources])
-  options[:resources] = SysInfo.read_info(options[:resources])
+  if options[:action] == :up
+    options[:resources] = File.expand_path(options[:resources])
+    options[:resources] = SysInfo.read_info(options[:resources])
+  end
   options
 end
 

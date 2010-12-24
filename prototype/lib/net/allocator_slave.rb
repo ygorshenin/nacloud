@@ -82,6 +82,7 @@ class AllocatorSlave
     DRb.stop_service
     @status = :stopped
     @logger.info("slave stopped")
+    @logger.close
   end
 
   def status

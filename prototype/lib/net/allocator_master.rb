@@ -56,6 +56,7 @@ class AllocatorMaster
     @db_client.stop
     @status = :stopped
     @logger.info "master stopped"
+    @logger.close
   end
 
   # Returns master status
