@@ -46,10 +46,16 @@ begin
   uri = "druby://#{options[:host]}:#{options[:port]}"
   case options[:action]
   when :up
-    fork do
+    pid = fork do
+      Process::setsid
+      STDIN.reopen('/dev/null', 'r')
+      STDOUT.reopen('/dev/null', 'w')
+      STDERR.reopen('/dev/null', 'w')
+      
       master = AllocatorMaster.new(options)
       master.up(uri)
     end
+    Process::detach pid
   when :down
     master = DRbObject.new_with_uri(uri)
     master.down

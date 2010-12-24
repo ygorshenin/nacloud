@@ -55,10 +55,14 @@ begin
   when :up
     pid = fork do
       Process::setsid
+      STDIN.reopen('/dev/null', 'r')
+      STDOUT.reopen('/dev/null', 'w')
+      STDERR.reopen('/dev/null', 'w')
+      
       slave = AllocatorSlave.new(options)
       slave.up(uri)
     end
-    Process::detach(pid)
+    Process::detach pid
   when :down
     slave = DRbObject.new_with_uri(uri)
     slave.down
