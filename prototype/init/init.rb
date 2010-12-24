@@ -58,7 +58,7 @@ SLAVE_UTIL_PATH = File.join('allocator', 'slaveutil.rb')
 OPTIONS = SLAVE_OPTIONS.map { |option| "--#{option}=#{options[option]}" }.join(' ')
 
 REMOTE_COMMANDS = [
-#                   "./slave_init.rb --host=#{options[:db_host]} --port=#{options[:db_port]} --dst=#{options[:dst]}",
+                   "./slave_init.rb --host=#{options[:db_host]} --port=#{options[:db_port]} --dst=#{options[:dst]}",
                    "#{File.join(options[:dst], SLAVE_UTIL_PATH)} #{OPTIONS}",
                    ]
 
@@ -89,8 +89,8 @@ def run_cmd(cmd, options = {})
 end
 
 begin
-#  STDERR.puts "uploading files: #{REQUIRED_FILES.join(', ')}... "
-  #  upload_files(REQUIRED_FILES, :scp_options => SCP_OPTIONS, :login => LOGIN, :raise_if_fails => true)
+  STDERR.puts "uploading files: #{REQUIRED_FILES.join(', ')}... "
+  upload_files(REQUIRED_FILES, :scp_options => SCP_OPTIONS, :login => LOGIN, :raise_if_fails => true)
   options[:resources] = File.basename(options[:resources])
   REMOTE_COMMANDS.each { |cmd| remote_execute(cmd, :ssh_options => SSH_OPTIONS, :login => LOGIN, :raise_if_fails => true) }
 rescue Exception => e
