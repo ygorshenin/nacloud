@@ -21,6 +21,7 @@ require 'drb'
 require 'fileutils'
 require 'lib/ext/core_ext'
 require 'lib/net/database_system'
+require 'lib/res/resource_parser'
 require 'lib/options'
 require 'lib/package/spm'
 require 'optparse'
@@ -127,8 +128,12 @@ class ConfigUtils
     job[:command] = String(job[:command]) if job.has_key? :command
 
     job[:resources] ||= {}
-    job[:resources] = job[:resources].merge(DEFAULT_RESOURCES)
-    job[:resources][:ram] = job[:resources][:ram].to_i
+    job[:resources][:ram] = ResourceParser.parse_m(String(job[:resources][:ram])) if job[:resources][:ram]
+    job[:resources][:disk] = ResourceParser.parse_m(String(job[:resources][:disk])) if job[:resources][:disk]
+    
+    job[:resources] = DEFAULT_RESOURCES.merge(job[:resources])
+
+    job
   end
 
   # Prepares jobs description.
@@ -306,6 +311,7 @@ end
 
 begin
   config = ConfigUtils::read_config(options)
+
   checker = (options[:action] == :up ? StrongConfigChecker : WeakConfigChecker).new
   checker.check(config)
   
