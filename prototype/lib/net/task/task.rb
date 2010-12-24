@@ -46,7 +46,6 @@ class Task
   # Does nothing if task is already stopped.
   def stop
     return if @status == :stopped
-    STDERR.puts "killing #@pid"
     begin
       Process::kill('-TERM', @pid)
     rescue Exception => e
