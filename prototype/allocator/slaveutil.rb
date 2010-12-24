@@ -53,10 +53,12 @@ begin
   uri = "druby://#{`hostname`.strip}:#{options[:port]}"
   case options[:action]
   when :up
-    fork do
+    pid = fork do
+      Process::setsid
       slave = AllocatorSlave.new(options)
       slave.up(uri)
     end
+    Process::detach(pid)
   when :down
     slave = DRbObject.new_with_uri(uri)
     slave.down
