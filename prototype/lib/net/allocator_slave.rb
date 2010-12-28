@@ -12,13 +12,13 @@ require 'logger'
 class AllocatorSlave
   include DRbUndumped
 
-  OPTIONS = [:id, :host, :port, :root_dir, :home_dir, :server_host, :server_port, :register_timeout, :resources]
+  OPTIONS = [:id, :interface, :port, :root_dir, :home_dir, :server_host, :server_port, :register_timeout, :resources]
 
   DEFAULT_OPTIONS = {
     :vmdir_job => 'job',
     :vmdir_packages => 'packages',
     
-    :host => `hostname`.strip,
+    :interface => '0.0.0.0',
     :root_dir => '.',
     :home_dir => 'home',
     :register_timeout => 2.seconds,
@@ -57,7 +57,7 @@ class AllocatorSlave
   # Periodically connects to server and registers.
   def register_slave
     uri = "druby://#{@options[:server_host]}:#{@options[:server_port]}"
-    slave = { :id => @options[:id], :host => @options[:host], :port => @options[:port] }
+    slave = { :id => @options[:id], `hostname`.strip => @options[:host], :port => @options[:port] }
     ok = false
     loop do
       begin

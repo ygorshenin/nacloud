@@ -71,6 +71,8 @@ class ConfigUtils
   def self.read_config(options)
     prepare_config(get_options_from_file(options[:config]), options)
   end
+
+  private
   
   # Prepares jobs configuration file.
   # Modifies config and returns it.
@@ -83,8 +85,6 @@ class ConfigUtils
     prepare_packages(config[:packages], options)
     config
   end
-
-  private
 
   # Prepares one package description.
   # Modifies argument and returns it.

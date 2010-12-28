@@ -16,7 +16,7 @@ def parse_options(argv)
   
   parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on("--home_dir=DIR", "name of tasks home directory,", "where all VMDirs will be created", "default=#{options[:home_dir]}", String) { |home_dir| options[:home_dir] = home_dir }
-  parser.on("--host=HOST", "host, on which slave must be runned", "default=#{options[:host]}", String) { |host| options[:host] = host }
+  parser.on("--interface=INTERFACE", "default=#{options[:interface]}", String) { |interface| options[:interface] = interface }
   parser.on("--id=ID", "id of slave, must be unique", String) { |id| options[:id] = id }
   parser.on("--logfile=FILE", "name of logfile", String) { |logfile| options[:logfile] = logfile }
   parser.on("--port=PORT", "port, on which slave will be available", "by master", Integer) { |port| options[:port] = port }
@@ -50,7 +50,7 @@ end
 
 begin
   DRb.start_service
-  uri = "druby://#{`hostname`.strip}:#{options[:port]}"
+  uri = "druby://#{options[:interface]}:#{options[:port]}"
   case options[:action]
   when :up
     pid = fork do

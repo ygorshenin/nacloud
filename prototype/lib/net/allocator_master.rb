@@ -15,11 +15,11 @@ require 'timeout'
 class AllocatorMaster
   include DRbUndumped
 
-  OPTIONS = [:host, :port, :db_client_port, :db_host, :db_port, :allocator_timeout]
+  OPTIONS = [:interface, :port, :db_client_port, :db_host, :db_port, :allocator_timeout]
 
   # Default server options. May be used in command-line utils as default values.
   DEFAULT_OPTIONS = {
-    :host => `hostname`.strip,
+    :interface => '0.0.0.0', # default master interface
     :allocator_timeout => 1.seconds, # How often checks available nodes
   }
 
@@ -44,7 +44,7 @@ class AllocatorMaster
   def up(uri)
     @logger.info "running service #{uri}"
     DRb.start_service uri, self
-    @db_client.start "druby://#{@options[:host]}:#{@options[:db_client_port]}"
+    @db_client.start "druby://#{@options[:interface]}:#{@options[:db_client_port]}"
     trap('INT') { down }
     @status = :running
     DRb.thread.join
