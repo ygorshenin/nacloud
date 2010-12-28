@@ -1,75 +1,19 @@
 #!/usr/bin/ruby
 # Author: Yuri Gorshenin
 
+$:.unshift File.dirname(__FILE__)
+
 require 'optparse'
+require 'slave_remote_util'
 
-class SlaveRemoteUtil
-  REQUIRED_OPTIONS = [:host, :user, :identity, :db_host, :db_port, :id, :logfile, :port, :server_host, :server_port, :resources]
-  
-  DEFAULT_OPTIONS = {
-    :user => ENV['USER'],
-    :identity => File.expand_path('~/.ssh/compute'),
-    :dst => 'slave',
-  }
-  
-  REQUIRED_FILES = ['slave_core.rb', 'slave_init.rb'].map { |file| File.join(File.dirname(__FILE__), file) }
-  SLAVE_OPTIONS = [:id, :logfile, :port, :server_host, :server_port, :resources]
-  SLAVEUTIL_PATH = File.join('allocator', 'slaveutil.rb')
-
-  def initialize(options)
-    @options = options
-    @login = @options[:user] + '@' + @options[:host]
-    @ssh_options = "-n -T -o 'UserKnownHostsFile /dev/null' -o 'CheckHostIP no' -o 'StrictHostKeyChecking no' -i #{@options[:identity]} -A -p 22"
-    @scp_options = "-o 'UserKnownHostsFile /dev/null' -o 'CheckHostIP no' -o 'StrictHostKeyChecking no' -i #{@options[:identity]}"
-  end
-
-  # Ups single node on remote server.
-  def up(options = {})
-    files = REQUIRED_FILES.push(@options[:resources])
-    upload_files(files, options)
-
-    args = @options.dup
-    args[:resources] = File.basename(args[:resources])
-
-    args = SLAVE_OPTIONS.map{|option| "--#{option}=#{args[option]}"}.join(' ')
-    commands = [
-                "./slave_init.rb --host=#{@options[:db_host]} --port=#{@options[:db_port]} --dst=#{@options[:dst]}",
-                "#{File.join(@options[:dst], SLAVEUTIL_PATH)} #{args}",
-               ]
-    commands.each{|command| remote_execute(command, options)}
-  end
-
-  private
-  
-  # Uploads list of files into server.
-  # Options must contain :scp_options and :login keys.
-  # Raises exception, if fails.
-  def upload_files(files, options)
-    run_cmd("scp #@scp_options #{Array(files).join(' ')} #@login:.")
-  end
-  
-  # Executes one command remotely.
-  # Raises exception, if fails.
-  # Returns remote programs output.
-  def remote_execute(cmd, options = {})
-    cmd = "ssh #@ssh_options #@login #{cmd}"
-    run_cmd(cmd, options)
-  end
-
-  # Runs cmd.
-  # Options may has a key :raise_if_fails.
-  # Returns output of command.
-  def run_cmd(cmd, options = {})
-    result = `#{cmd}`
-    raise RuntimeError.new(result) unless $?.success?
-    return result
-  end
-end
+ACTIONS = [ :up, :down, :status ]
 
 def parse_options(argv)
   options, parser = SlaveRemoteUtil::DEFAULT_OPTIONS, OptionParser.new
+  options[:action] = :up
 
   # General options
+  parser.on("--action=ACTION", "one action from: #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on('--host=HOST', "host, on which slave will be installed", String) { |host| options[:host] = host }
   parser.on('--user=USER', "user, which login will be used", "default=#{options[:user]}", String) { |user| options[:user] = user }
   parser.on('--identity=FILE', "ssh identity file", "default=#{options[:identity]}", String) { |identity| options[:identity] = identity }
@@ -86,12 +30,14 @@ def parse_options(argv)
 
   parser.parse(*argv)
 
-  SlaveRemoteUtil::REQUIRED_OPTIONS.each do |option|
+  required = (options[:action] == :up ? SlaveRemoteUtil::STRONG_OPTIONS : SlaveRemoteUtil::WEAK_OPTIONS)
+
+  required.each do |option|
     raise ArgumentError.new("#{option} must be specified") unless options[option]
   end
   
-  options[:identity] = File.expand_path(options[:identity])
-  options[:resources] = File.expand_path(options[:resources])
+  options[:identity] = File.expand_path(options[:identity]) if options.has_key? :identity
+  options[:resources] = File.expand_path(options[:resources]) if options.has_key? :resources
   return options
 end
 
@@ -99,13 +45,16 @@ begin
   options = parse_options(ARGV)
 rescue Exception => e
   STDERR.puts e
-  STDERR.puts e.backtrace
   exit -1
 end
 
 begin
   util = SlaveRemoteUtil.new(options)
-  util.up(:raise_if_fails => true)
+  case options[:action]
+  when :up then util.up(:raise_if_fails => true)
+  when :down then util.down
+  when :status then puts util.status
+  end
 rescue Exception => e
   STDERR.puts e
   STDERR.puts e.backtrace
