@@ -28,6 +28,8 @@ class SlaveRemoteUtil
   end
 
   # Ups single node on remote server.
+  # Options may contain key :raise_if_fails, what means, that
+  # if some command fails, exception is raised.
   def up(options = {})
     files = REQUIRED_FILES.push(@options[:resources])
     upload_files(files, options)

@@ -15,17 +15,16 @@ def parse_options(argv)
   options[:action] = :up
 
   parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
-  parser.on("--db_host=HOST", "database host", String) { |db_host| options[:db_host] = db_host }
-  parser.on("--db_port=PORT", "database port", Integer) { |db_port| options[:db_port] = db_port }
-  parser.on("--db_client_port=PORT", "database client port", Integer) { |db_client_port| options[:db_client_port] = db_client_port }
+  parser.on("--db_host=HOST", "database host", "default=#{options[:db_host]}", String) { |db_host| options[:db_host] = db_host }
+  parser.on("--db_port=PORT", "database port", "default=#{options[:db_port]}", Integer) { |db_port| options[:db_port] = db_port }
+  parser.on("--db_client_port=PORT", "database client port", "default=#{options[:db_client_port]}", Integer) { |db_client_port| options[:db_client_port] = db_client_port }
   parser.on("--interface=INTERFACE", "default=#{options[:interface]}", String) { |host| options[:interface] = host }
-  parser.on("--logfile=FILE", String) { |logfile| options[:logfile] = logfile }
-  parser.on("--port=PORT", "port on which server will run", Integer) { |port| options[:port] = port }
+  parser.on("--logfile=FILE", "default=#{options[:logfile]}", String) { |logfile| options[:logfile] = logfile }
+  parser.on("--port=PORT", "port on which server will run", "default=#{options[:port]}", Integer) { |port| options[:port] = port }
 
   parser.parse(*argv)
 
-  required = [:port]
-  required += [:db_host, :db_port, :db_client_port] if options[:action] == :up
+  required = (options[:action] == :up ? AllocatorMaster::STRONG_OPTIONS : AllocatorMaster::WEAK_OPTIONS)
   
   required.each do |option|
     raise ArgumentError.new("#{option} must be specified") unless options.has_key?(option)
@@ -56,11 +55,18 @@ begin
     end
     Process::detach pid
   when :down
-    master = DRbObject.new_with_uri(uri)
-    master.down
+    begin
+      master = DRbObject.new_with_uri(uri)
+      master.down
+    rescue DRb::DRbConnError => e
+    end
   when :status
-    master = DRbObject.new_with_uri(uri)
-    puts master.status
+    begin
+      master = DRbObject.new_with_uri(uri)
+      puts master.status
+    rescue DRb::DRbConnError => e
+      puts "seems that server is down"
+    end
   end
 rescue Exception => e
   STDERR.puts e

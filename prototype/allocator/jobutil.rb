@@ -20,6 +20,7 @@ $:.unshift File.expand_path(File.join(File.dirname(__FILE__), '..'))
 require 'drb'
 require 'fileutils'
 require 'lib/ext/core_ext'
+require 'lib/net/allocator_master'
 require 'lib/net/database_system'
 require 'lib/res/resource_parser'
 require 'lib/options'
@@ -37,13 +38,13 @@ end
 # Raises ArgumentError, if important options are missed.
 # Returns parsed options as Hash.
 def parse_options(argv)
-  parser, options = OptionParser.new, { :action => :up }
+  parser, options = OptionParser.new, { :action => :up, :port => AllocatorMaster::DEFAULT_OPTIONS[:port], :user => ENV['USER'] }
 
   parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
   parser.on("--config=FILE", "job configuration file", String) { |config| options[:config] = config }
   parser.on("--host=HOST", "server host", String) { |host| options[:host] = host }
-  parser.on("--port=PORT", "server port", Integer) { |port| options[:port] = port }
-  parser.on("--user=USER", "user ID", String) { |user| options[:user] = user }
+  parser.on("--port=PORT", "server port", "default=#{options[:port]}", Integer) { |port| options[:port] = port }
+  parser.on("--user=USER", "user ID", "default=#{options[:user]}", String) { |user| options[:user] = user }
   
   parser.parse(*argv)
 

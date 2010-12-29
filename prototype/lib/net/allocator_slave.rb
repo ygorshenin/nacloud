@@ -22,9 +22,14 @@ class AllocatorSlave
     :root_dir => '.',
     :home_dir => 'home',
     :register_timeout => 2.seconds,
+    :port => 30002,
+    :server_port => 30000,
+    :logfile => 'slave.log',
   }
 
-  REQUIRED_OPTIONS = OPTIONS.select { |k| not DEFAULT_OPTIONS.has_key?(k) }
+  REQUIRED_OPTIONS = [:id, :interface, :port, :root_dir, :home_dir, :server_host, :server_port, :register_timeout, :resources, :logfile]
+  STRONG_OPTIONS = REQUIRED_OPTIONS # Options that needed to up server
+  WEAK_OPTIONS = [:port] # Options that needed to down server or to check server status
   
   def initialize(options = {})
     @options = DEFAULT_OPTIONS.merge(options)

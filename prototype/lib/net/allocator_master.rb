@@ -15,13 +15,19 @@ require 'timeout'
 class AllocatorMaster
   include DRbUndumped
 
-  OPTIONS = [:interface, :port, :db_client_port, :db_host, :db_port, :allocator_timeout]
-
   # Default server options. May be used in command-line utils as default values.
   DEFAULT_OPTIONS = {
-    :interface => '0.0.0.0', # default master interface
-    :allocator_timeout => 1.seconds, # How often checks available nodes
+    :interface => '0.0.0.0', # Default master interface
+    :port => 30000,
+    :db_client_port => 30001,
+    :db_host => '127.0.0.1',
+    :db_port => 9160,
+    :logfile => 'master.log'
   }
+
+  REQUIRED_OPTIONS = [:interface, :port, :db_client_port, :db_host, :db_port, :logfile]
+  STRONG_OPTIONS = REQUIRED_OPTIONS # Options that needed to up server
+  WEAK_OPTIONS = [:port] # Options that needed to down server or to check server status
 
   # Slaves is an Array of slaveses Hashes.
   # Options contains work information about root directory, host on which
