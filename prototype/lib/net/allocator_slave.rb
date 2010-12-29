@@ -62,7 +62,7 @@ class AllocatorSlave
   # Periodically connects to server and registers.
   def register_slave
     uri = "druby://#{@options[:server_host]}:#{@options[:server_port]}"
-    slave = { :id => @options[:id], `hostname`.strip => @options[:host], :port => @options[:port] }
+    slave = { :id => @options[:id], :host => `hostname`.strip, :port => @options[:port] }
     ok = false
     loop do
       begin

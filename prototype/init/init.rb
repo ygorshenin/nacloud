@@ -20,12 +20,12 @@ def parse_options(argv)
   parser.on('--dst=DIR', "where to put slave file", "default=#{options[:dst]}", String) { |dst| options[:dst] = dst }
   # Slave specified options
   parser.on("--db_host=HOST", "Cassandra's host", String) { |db_host| options[:db_host] = db_host }
-  parser.on("--db_port=PORT", "Cassandra's port", String) { |db_port| options[:db_port] = db_port }
+  parser.on("--db_port=PORT", "Cassandra's port", "default=#{options[:db_port]}", String) { |db_port| options[:db_port] = db_port }
   parser.on("--id=ID", "id of slave, must be unique", String) { |id| options[:id] = id }
-  parser.on("--logfile=FILE", "name of logfile", String) { |logfile| options[:logfile] = logfile }
-  parser.on("--port=PORT", "port, on which slave will be available", "by master", Integer) { |port| options[:port] = port }
+  parser.on("--logfile=FILE", "name of logfile", "default=#{options[:logfile]}", String) { |logfile| options[:logfile] = logfile }
+  parser.on("--port=PORT", "port, on which slave will be available by master", "default=#{options[:port]}", Integer) { |port| options[:port] = port }
   parser.on("--server_host=HOST", "where is server?", String) { |server_host| options[:server_host] = server_host }
-  parser.on("--server_port=PORT", "on which port?", String) { |server_port| options[:server_port] = server_port }
+  parser.on("--server_port=PORT", "on which port?", "default=#{options[:server_port]}", String) { |server_port| options[:server_port] = server_port }
   parser.on("--resources=FILE", "local file with resources description", String) { |resources| options[:resources] = resources }
 
   parser.parse(*argv)

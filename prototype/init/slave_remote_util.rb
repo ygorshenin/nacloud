@@ -1,18 +1,25 @@
 # Author: Yuri Gorshenin
 
+$:.unshift File.join(File.dirname(__FILE__), '..')
+
 require 'drb'
+require 'lib/net/allocator_slave'
 
 # Class contains several methods to
 # control remote slave.
 class SlaveRemoteUtil
-  REQUIRED_OPTIONS = [:host, :user, :identity, :port, :dst, :db_host, :db_port, :id, :logfile, :server_host, :server_port, :resources]
-  STRONG_OPTIONS = REQUIRED_OPTIONS
-  WEAK_OPTIONS = [:host, :port]
+  REQUIRED_OPTIONS = [:user, :host, :identity, :dst, :port, :db_host, :db_port, :id, :logfile, :server_host, :server_port, :resources]
+  STRONG_OPTIONS = REQUIRED_OPTIONS # Options that needed to start remote services
+  WEAK_OPTIONS = [:host, :port] # Options that needed to down or check status of remote services
   
   DEFAULT_OPTIONS = {
     :user => ENV['USER'],
     :identity => File.expand_path('~/.ssh/compute'),
     :dst => '.',
+    :port => AllocatorSlave::DEFAULT_OPTIONS[:port],
+    :db_port => 9160,
+    :server_port => AllocatorSlave::DEFAULT_OPTIONS[:server_port],
+    :logfile => AllocatorSlave::DEFAULT_OPTIONS[:logfile],
   }
   
   REQUIRED_FILES = ['slave_core.rb', 'slave_init.rb'].map{|file| File.join(File.dirname(__FILE__), file)}
@@ -45,16 +52,23 @@ class SlaveRemoteUtil
     commands.each{|command| remote_execute(command, options)}
   end
 
-  # Raises exception, if fails.
+  # Raises exception, if fails
   def down
-    slave = DRbObject.new_with_uri("druby://#{@options[:host]}:#{@options[:port]}")
-    slave.down
+    begin
+      slave = DRbObject.new_with_uri("druby://#{@options[:host]}:#{@options[:port]}")
+      slave.down
+    rescue DRb::DRbConnError => e
+    end
   end
 
   # Raises exception, if fails.
   def status
-    slave = DRbObject.new_with_uri("druby://#{@options[:host]}:#{@options[:port]}")
-    slave.status
+    begin
+      slave = DRbObject.new_with_uri("druby://#{@options[:host]}:#{@options[:port]}")
+      return slave.status
+    rescue DRb::DRbConnError => e
+      return 'seems that server is down'
+    end
   end
   
   private

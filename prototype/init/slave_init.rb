@@ -23,10 +23,10 @@ include SlaveCore
 # argv is an array with options.
 # Throws exception, if fails.
 def parse_options(argv)
-  options, parser = { :dst => '.' }, OptionParser.new
+  options, parser = { :dst => '.', :port => 9160 }, OptionParser.new
 
   parser.on('-h', '--host=HOST', "Cassandra's host", String) { |host| options[:host] = host }
-  parser.on('-p', '--port=PORT', "Cassandra's port", Integer) { |port| options[:port] = port }
+  parser.on('-p', '--port=PORT', "Cassandra's port", "default=#{options[:port]}", Integer) { |port| options[:port] = port }
   parser.on('-d', '--dst=DIR', "where to put all packages", "default=.", String) { |dst| options[:dst] = dst }
 
   parser.parse(*argv)
