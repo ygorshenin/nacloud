@@ -25,16 +25,19 @@
 # it describes slaves with names slave0, slave1 and so on, which will be hosted
 # on machines 173.255.123.52, 173.255.123.53, ...
 
+$:.unshift File.join(File.dirname(__FILE__), '..')
+
 require 'optparse'
+require 'slave_remote_util'
+require 'lib/ext/core_ext'
 require 'yaml'
 
-ACTIONS = [ :up, :down, :status ]
+ACTIONS = [:up, :down, :status]
 
 def parse_options(argv)
   options, parser = { :action => :up }, OptionParser.new
-  parser.on("--config=FILE", "YAML configuration file, that contains", "all necessary options", String) { |config| options[:config] = config }
   parser.on("--action=ACTION", "one from #{ACTIONS.join(',')}", "default=#{options[:action]}", ACTIONS) { |action| options[:action] = action }
-
+  parser.on("--config=FILE", "YAML configuration file, that contains", "all necessary options", String) { |config| options[:config] = config }
   parser.parse(*argv)
 
   options
@@ -43,9 +46,9 @@ end
 class CroudConfigUtils
   DEFAULT_OPTIONS = {
     :base => 'slave',
-    :port => 30000,
-    :server_port => 30000,
-    :db_port => 9160,
+    :port => SlaveRemoteUtil::DEFAULT_OPTIONS[:port],
+    :server_port => SlaveRemoteUtil::DEFAULT_OPTIONS[:server_port],
+    :db_port => SlaveRemoteUtil::DEFAULT_OPTIONS[:db_port],
     :addresses => [],
   }
   
@@ -128,6 +131,7 @@ end
 class StrongConfigChecker
   include ConfigChecks
 
+  # Methods from ConfigChecks, that used in verification
   METHODS = [:check_slave_base, :check_slave_port, :check_server, :check_db, :check_addresses, :check_resources]
 
   def check(config)
@@ -139,10 +143,87 @@ end
 class WeakConfigChecker
   include ConfigChecks
 
-  METHODS = [ :check_addresses, :check_slave_port ]
+  # Methods from ConfigChecks, that used in verification
+  METHODS = [:check_addresses, :check_slave_port]
 
   def check(config)
     METHODS.each { |method| send method, config }
+  end
+end
+
+# Class reports info about each host and corresponding status.
+class Reporter
+  def self.report(addresses, statuses)
+    return addresses.zip(statuses).map{|address, status| "#{address}\t: #{status}"}.join("\n")
+  end
+end
+
+class RemoteSlavesUp
+  # Ups remote slaves.
+  # Returns string with results for each host
+  def do(config)
+    resources = gen_tmp_name
+    File.open(resources, 'w') { |file| file.write config[:resources].to_yaml }
+    result = config[:addresses].process_parallel do |address, index|
+      Thread.current[:status] = do_single(config.merge({:host => address, :id => config[:base] + index.to_s, :resources => resources}))
+    end
+    File.delete resources
+    return result
+  end
+
+  private
+
+  # Returns :success or :fail
+  def do_single(options)
+    begin
+      SlaveRemoteUtil.new(options).up(:raise_if_fails => true)
+      return :success
+    rescue Exception => e
+      return :fail
+    end
+  end
+
+  def gen_tmp_name
+    return "#{Time.now.to_i}.#{Process.pid}"
+  end
+end
+
+class RemoteSlavesDown
+  def do(config)
+    return config[:addresses].process_parallel do |address, index|
+      Thread.current[:status] = do_single(config.merge({:host => address}))
+    end
+  end
+
+  private
+
+  # Returns :success or :fail
+  def do_single(options)
+    begin
+      SlaveRemoteUtil.new(options).down
+      return :success
+    rescue Exception => e
+      return :fail
+    end
+  end
+end
+
+class RemoteSlavesStatus
+  def do(config)
+    return config[:addresses].process_parallel do |address, index|
+      Thread.current[:status] = do_single(config.merge({:host => address}))
+    end
+  end
+
+  private
+
+  # Returns status or :fail
+  def do_single(options)
+    begin
+      return SlaveRemoteUtil.new(options).status
+    rescue Exception => e
+      return :fail
+    end    
   end
 end
 
@@ -157,6 +238,14 @@ begin
   config = CroudConfigUtils::read_config(options)
   checker = (options[:action] == :up ? StrongConfigChecker : WeakConfigChecker).new
   checker.check config
+
+  case options[:action]
+  when :up then result = RemoteSlavesUp.new.do(config)
+  when :down then result = RemoteSlavesDown.new.do(config)
+  when :status then result = RemoteSlavesStatus.new.do(config)
+  end
+
+  puts Reporter.report(config[:addresses], result)
 rescue Exception => e
   STDERR.puts e
   STDERR.puts e.backtrace
