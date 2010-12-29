@@ -8,7 +8,7 @@
 # 
 # port: 30000
 # base: slave
-# ip_addresses:
+# addresses:
 #   - 173.255.123.52
 #   - 173.255.123.53
 #   - ...
